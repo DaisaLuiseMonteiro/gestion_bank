@@ -8,6 +8,9 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
+        // Supprimer explicitement la contrainte standard si elle existe
+        DB::statement("ALTER TABLE clients DROP CONSTRAINT IF EXISTS clients_sexe_check");
+
         // Supprimer toute contrainte CHECK existante liée à la colonne `sexe` (nom variable selon environnements)
         DB::statement(<<<'SQL'
             DO $$
