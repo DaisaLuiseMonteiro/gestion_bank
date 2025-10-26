@@ -75,6 +75,22 @@ class CompteController extends Controller
         return response()->json($response);
     }
 
+    private function formatCompteData(Compte $c): array
+    {
+        return [
+            'id' => $c->id,
+            'numeroCompte' => $c->numeroCompte,
+            'titulaire' => $c->titulaire,
+            'type' => $c->type,
+            'devise' => $c->devise,
+            'dateCreation' => $c->dateCreation instanceof \Illuminate\Support\Carbon ? $c->dateCreation->toDateString() : (string) $c->dateCreation,
+            'statut' => $c->statut,
+            'client_id' => $c->client_id,
+            'created_at' => optional($c->created_at)->toDateTimeString(),
+            'updated_at' => optional($c->updated_at)->toDateTimeString(),
+        ];
+    }
+
     /**
      * @OA\Get(
      *   path="/monteiro.daisa/v1/clients/{clientId}/comptes",
