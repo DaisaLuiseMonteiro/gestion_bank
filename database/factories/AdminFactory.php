@@ -20,6 +20,8 @@ class AdminFactory extends Factory
             'user_id' => \App\Models\User::factory(),
             'admin_code' => $this->faker->unique()->numerify('ADM###'),
             'department' => $this->faker->randomElement(['IT', 'Finance', 'HR', 'Operations']),
+            'login' => $this->faker->unique()->userName(),
+            'password' => bcrypt('admin123'),
         ];
     }
 }

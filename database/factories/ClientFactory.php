@@ -37,6 +37,7 @@ class ClientFactory extends Factory
        'user_id' => \App\Models\User::factory(),
        'nom' => $nom,
        'prenom' => $prenom,
+       'email' => $this->faker->unique()->safeEmail(),
        'sexe' => $sexe,
        'telephone' => $telephone,
        'cni' => $cni,

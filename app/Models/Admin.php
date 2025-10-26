@@ -17,6 +17,8 @@ class Admin extends Model
         'user_id',
         'admin_code',
         'department',
+        'login',
+        'password',
     ];
 
     protected static function boot(): void
