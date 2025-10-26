@@ -8,11 +8,9 @@ use Illuminate\Support\Facades\DB;
 return new class extends Migration {
     public function up(): void
     {
-        // 1) Ajouter les colonnes en NULLABLE via SQL brut (compat Postgres) pour éviter NOT NULL implicite
         DB::statement("ALTER TABLE admins ADD COLUMN IF NOT EXISTS login VARCHAR(255)");
         DB::statement("ALTER TABLE admins ADD COLUMN IF NOT EXISTS password VARCHAR(255)");
 
-        // 2) Backfill: générer un login unique et un mot de passe hashé pour les lignes existantes
         $admins = DB::table('admins')->select('id', 'login', 'password')->get();
         foreach ($admins as $a) {
             $login = $a->login;
@@ -29,16 +27,13 @@ return new class extends Migration {
             ]);
         }
 
-        // 3) Imposer NOT NULL et l'unicité de login (PostgreSQL)
         DB::statement("ALTER TABLE admins ALTER COLUMN login SET NOT NULL;");
         DB::statement("ALTER TABLE admins ALTER COLUMN password SET NOT NULL;");
-        // Créer l'index unique si non existant
         DB::statement("DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE c.relname = 'admins_login_unique' AND n.nspname = 'public') THEN CREATE UNIQUE INDEX admins_login_unique ON admins(login); END IF; END $$;");
     }
 
     public function down(): void
     {
-        // Supprimer l'index unique si présent
         DB::statement("DO $$ BEGIN IF EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE c.relname = 'admins_login_unique' AND n.nspname = 'public') THEN DROP INDEX admins_login_unique; END IF; END $$;");
 
         Schema::table('admins', function (Blueprint $table) {
