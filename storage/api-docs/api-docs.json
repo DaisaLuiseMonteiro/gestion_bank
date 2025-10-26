@@ -1,0 +1,289 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Gestion Bank API",
+        "description": "API pour la gestion bancaire",
+        "version": "1.0.0"
+    },
+    "servers": [
+        {
+            "url": "/",
+            "description": "Serveur local"
+        }
+    ],
+    "paths": {
+        "/monteiro.daisa/v1/clients": {
+            "get": {
+                "tags": [
+                    "Clients"
+                ],
+                "summary": "Lister les clients",
+                "operationId": "9414da5b156ac395819f7a2221efd353",
+                "parameters": [
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Liste des clients"
+                    }
+                }
+            }
+        },
+        "/monteiro.daisa/v1/comptes": {
+            "get": {
+                "tags": [
+                    "Comptes"
+                ],
+                "summary": "Lister les comptes",
+                "operationId": "a7e8ee179b29bc79180ab71f66174554",
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "type",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "courant",
+                                "epargne",
+                                "cheque"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "statut",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "actif",
+                                "bloque",
+                                "ferme"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "dateCreation",
+                                "titulaire"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "order",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "asc",
+                                "desc"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Liste paginée des comptes"
+                    }
+                }
+            }
+        },
+        "/monteiro.daisa/v1/clients/{clientId}/comptes": {
+            "get": {
+                "tags": [
+                    "Comptes"
+                ],
+                "summary": "Lister les comptes d'un client (création si aucun)",
+                "operationId": "d3f5e88514ad35d9f0402d85675a7bab",
+                "parameters": [
+                    {
+                        "name": "clientId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Liste des comptes du client"
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "Client": {
+                "title": "Client",
+                "description": "Client model",
+                "properties": {
+                    "id": {
+                        "description": "Client UUID",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "user_id": {
+                        "description": "User ID",
+                        "type": "integer"
+                    },
+                    "nom": {
+                        "description": "Last name",
+                        "type": "string"
+                    },
+                    "prenom": {
+                        "description": "First name",
+                        "type": "string"
+                    },
+                    "telephone": {
+                        "description": "Phone number",
+                        "type": "string"
+                    },
+                    "cni": {
+                        "description": "National ID",
+                        "type": "string"
+                    },
+                    "sexe": {
+                        "description": "Gender",
+                        "type": "string",
+                        "enum": [
+                            "M",
+                            "F"
+                        ]
+                    },
+                    "adresse": {
+                        "description": "Address",
+                        "type": "string"
+                    },
+                    "statut": {
+                        "description": "Status",
+                        "type": "string"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "type": "object"
+            },
+            "Compte": {
+                "title": "Account",
+                "description": "Bank account model",
+                "properties": {
+                    "id": {
+                        "description": "Account UUID",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "numeroCompte": {
+                        "description": "Account number",
+                        "type": "string"
+                    },
+                    "titulaire": {
+                        "description": "Account holder name",
+                        "type": "string"
+                    },
+                    "type": {
+                        "description": "Account type",
+                        "type": "string",
+                        "enum": [
+                            "courant",
+                            "epargne"
+                        ]
+                    },
+                    "solde": {
+                        "description": "Account balance",
+                        "type": "number",
+                        "format": "float"
+                    },
+                    "devise": {
+                        "description": "Currency",
+                        "type": "string"
+                    },
+                    "dateCreation": {
+                        "description": "Creation date",
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "statut": {
+                        "description": "Account status",
+                        "type": "string",
+                        "enum": [
+                            "actif",
+                            "bloque",
+                            "ferme"
+                        ]
+                    },
+                    "client_id": {
+                        "description": "Client UUID",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "type": "object"
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "Clients",
+            "description": "Clients"
+        },
+        {
+            "name": "Comptes",
+            "description": "Comptes"
+        }
+    ]
+}
