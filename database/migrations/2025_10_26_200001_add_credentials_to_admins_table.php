@@ -8,15 +8,9 @@ use Illuminate\Support\Facades\DB;
 return new class extends Migration {
     public function up(): void
     {
-        // 1) Ajouter les colonnes en nullable pour éviter la violation NOT NULL sur les données existantes
-        Schema::table('admins', function (Blueprint $table) {
-            if (!Schema::hasColumn('admins', 'login')) {
-                $table->string('login')->nullable()->after('department');
-            }
-            if (!Schema::hasColumn('admins', 'password')) {
-                $table->string('password')->nullable()->after('login');
-            }
-        });
+        // 1) Ajouter les colonnes en NULLABLE via SQL brut (compat Postgres) pour éviter NOT NULL implicite
+        DB::statement("ALTER TABLE admins ADD COLUMN IF NOT EXISTS login VARCHAR(255)");
+        DB::statement("ALTER TABLE admins ADD COLUMN IF NOT EXISTS password VARCHAR(255)");
 
         // 2) Backfill: générer un login unique et un mot de passe hashé pour les lignes existantes
         $admins = DB::table('admins')->select('id', 'login', 'password')->get();
