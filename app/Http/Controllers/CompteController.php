@@ -6,6 +6,7 @@ use App\Models\Compte;
 use App\Models\Client;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class CompteController extends Controller
 {
@@ -29,7 +30,8 @@ class CompteController extends Controller
     // GET monteiro.daisa/v1/comptes
     public function index(Request $request)
     {
-        $query = Compte::query();
+        try {
+            $query = Compte::query();
 
         // Filtrage et tri délégués au modèle via scopes
         $query->when($request->filled('type'), fn($q) => $q->where('type', $request->string('type')));
@@ -49,30 +51,34 @@ class CompteController extends Controller
         $page = max(1, (int) $request->input('page', 1));
         $limit = min(100, max(1, (int) $request->input('limit', 10)));
 
-        $paginator = $query->paginate($limit, ['*'], 'page', $page);
+            $paginator = $query->paginate($limit, ['*'], 'page', $page);
 
-        $data = $paginator->getCollection()->map(fn($c) => $this->formatCompteData($c));
+            $data = $paginator->getCollection()->map(fn($c) => $this->formatCompteData($c));
 
-        $response = [
-            'success' => true,
-            'data' => $data,
-            'pagination' => [
-                'currentPage' => $paginator->currentPage(),
-                'totalPages' => $paginator->lastPage(),
-                'totalItems' => $paginator->total(),
-                'itemsPerPage' => $paginator->perPage(),
-                'hasNext' => $paginator->hasMorePages(),
-                'hasPrevious' => $paginator->currentPage() > 1,
-            ],
-            'links' => [
-                'self' => url()->current() . '?' . http_build_query(['page' => $paginator->currentPage(), 'limit' => $paginator->perPage()]),
-                'next' => $paginator->hasMorePages() ? $paginator->url($paginator->currentPage() + 1) : null,
-                'first' => $paginator->url(1),
-                'last' => $paginator->url($paginator->lastPage()),
-            ],
-        ];
+            $response = [
+                'success' => true,
+                'data' => $data,
+                'pagination' => [
+                    'currentPage' => $paginator->currentPage(),
+                    'totalPages' => $paginator->lastPage(),
+                    'totalItems' => $paginator->total(),
+                    'itemsPerPage' => $paginator->perPage(),
+                    'hasNext' => $paginator->hasMorePages(),
+                    'hasPrevious' => $paginator->currentPage() > 1,
+                ],
+                'links' => [
+                    'self' => url()->current() . '?' . http_build_query(['page' => $paginator->currentPage(), 'limit' => $paginator->perPage()]),
+                    'next' => $paginator->hasMorePages() ? $paginator->url($paginator->currentPage() + 1) : null,
+                    'first' => $paginator->url(1),
+                    'last' => $paginator->url($paginator->lastPage()),
+                ],
+            ];
 
-        return response()->json($response);
+            return response()->json($response);
+        } catch (\Throwable $e) {
+            Log::error('Comptes.index error: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json(['success' => false, 'message' => 'Erreur interne'], 500);
+        }
     }
 
     private function formatCompteData(Compte $c): array
@@ -108,27 +114,32 @@ class CompteController extends Controller
     // GET monteiro.daisa/v1/clients/{clientId}/comptes
     public function byClient(Request $request, string $clientId)
     {
-        $client = Client::find($clientId);
-        if (!$client) {
-            return $this->errorResponse('Client introuvable', 404);
+        try {
+            $client = Client::find($clientId);
+            if (!$client) {
+                return $this->errorResponse('Client introuvable', 404);
+            }
+
+            $comptes = $client->comptes()->get();
+
+            // Si aucun compte, en créer un par défaut selon la règle exprimée
+            if ($comptes->isEmpty()) {
+                $compte = Compte::create([
+                    'client_id' => $client->id,
+                    'titulaire' => $client->prenom . ' ' . $client->nom,
+                    'type' => 'epargne',
+                    'devise' => 'FCFA',
+                    'statut' => 'actif',
+                    'metadata' => ['version' => 1],
+                ]);
+                $comptes = collect([$compte]);
+            }
+
+            $data = $comptes->map(fn($c) => $this->formatCompteData($c));
+            return $this->successResponse($data);
+        } catch (\Throwable $e) {
+            Log::error('Comptes.byClient error: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json(['success' => false, 'message' => 'Erreur interne'], 500);
         }
-
-        $comptes = $client->comptes()->get();
-
-        // Si aucun compte, en créer un par défaut selon la règle exprimée
-        if ($comptes->isEmpty()) {
-            $compte = Compte::create([
-                'client_id' => $client->id,
-                'titulaire' => $client->prenom . ' ' . $client->nom,
-                'type' => 'epargne',
-                'devise' => 'FCFA',
-                'statut' => 'actif',
-                'metadata' => ['version' => 1],
-            ]);
-            $comptes = collect([$compte]);
-        }
-
-        $data = $comptes->map(fn($c) => $this->formatCompteData($c));
-        return $this->successResponse($data);
     }
 }
