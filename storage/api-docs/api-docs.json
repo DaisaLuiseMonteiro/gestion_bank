@@ -183,12 +183,17 @@
                         "description": "National ID",
                         "type": "string"
                     },
+                    "email": {
+                        "description": "Email",
+                        "type": "string",
+                        "format": "email"
+                    },
                     "sexe": {
                         "description": "Gender",
                         "type": "string",
                         "enum": [
-                            "M",
-                            "F"
+                            "masculin",
+                            "feminin"
                         ]
                     },
                     "adresse": {
