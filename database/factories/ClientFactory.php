@@ -14,10 +14,11 @@ class ClientFactory extends Factory
 
    public function definition(): array
 {
-   $sexe = $this->faker->randomElement(['M', 'F']);
+   // Utiliser les nouvelles valeurs conformes à la contrainte CHECK et aux validations du modèle
+   $sexe = $this->faker->randomElement(['masculin', 'feminin']);
 
    // CNI Sénégalais : garçon commence par 1, fille par 2 + 12 chiffres
-   $cniPrefix = $sexe === 'M' ? '1' : '2';
+   $cniPrefix = $sexe === 'masculin' ? '1' : '2';
    $cniRest = $this->faker->numerify('############'); // 12 chiffres
    $cni = $cniPrefix . $cniRest;
 
@@ -30,7 +31,7 @@ class ClientFactory extends Factory
    $prenomsFemme = ['Fatou', 'Aminata', 'Mariama', 'Aïssatou', 'Khadija', 'Ndeye', 'Adama', 'Seynabou', 'Astou', 'Diarra'];
    $nomsFamille = ['Diop', 'Ndiaye', 'Sarr', 'Fall', 'Ba', 'Gaye', 'Sow', 'Sy', 'Diallo', 'Thiam'];
 
-   $prenom = $sexe === 'M' ? $this->faker->randomElement($prenomsHomme) : $this->faker->randomElement($prenomsFemme);
+   $prenom = $sexe === 'masculin' ? $this->faker->randomElement($prenomsHomme) : $this->faker->randomElement($prenomsFemme);
    $nom = $this->faker->randomElement($nomsFamille);
 
    return [
