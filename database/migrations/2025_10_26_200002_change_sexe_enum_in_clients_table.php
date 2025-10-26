@@ -8,8 +8,25 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        // Supprimer l'ancienne contrainte CHECK (issue de l'"enum" Laravel) pour permettre la mise à jour des valeurs
-        DB::statement("ALTER TABLE clients DROP CONSTRAINT IF EXISTS clients_sexe_check");
+        // Supprimer toute contrainte CHECK existante liée à la colonne `sexe` (nom variable selon environnements)
+        DB::statement(<<<'SQL'
+            DO $$
+            DECLARE r record;
+            BEGIN
+                FOR r IN (
+                    SELECT conname
+                    FROM pg_constraint c
+                    JOIN pg_class t ON t.oid = c.conrelid
+                    JOIN pg_namespace n ON n.oid = t.relnamespace
+                    WHERE t.relname = 'clients'
+                      AND n.nspname = 'public'
+                      AND c.contype = 'c'
+                      AND pg_get_constraintdef(c.oid) ILIKE '%sexe%'
+                ) LOOP
+                    EXECUTE format('ALTER TABLE public.clients DROP CONSTRAINT %I', r.conname);
+                END LOOP;
+            END $$;
+        SQL);
 
         // Passer la colonne sexe en string(10)
         Schema::table('clients', function (Blueprint $table) {
