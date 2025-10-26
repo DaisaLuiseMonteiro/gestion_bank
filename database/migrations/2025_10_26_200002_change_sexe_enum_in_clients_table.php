@@ -28,10 +28,8 @@ return new class extends Migration {
             END $$;
         SQL);
 
-        // Passer la colonne sexe en string(10)
-        Schema::table('clients', function (Blueprint $table) {
-            $table->string('sexe', 10)->change();
-        });
+        // Passer la colonne sexe en VARCHAR(10) sans dépendre de doctrine/dbal
+        DB::statement("ALTER TABLE clients ALTER COLUMN sexe TYPE VARCHAR(10)");
 
         // Conversion des anciennes valeurs si existantes
         DB::statement("UPDATE clients SET sexe = 'masculin' WHERE sexe = 'M'");
