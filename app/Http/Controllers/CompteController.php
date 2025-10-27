@@ -186,6 +186,105 @@ class CompteController extends Controller
         }
     }
 
+    /**
+     * @OA\Patch(
+     *   path="/monteiro.daisa/v1/comptes/{compteId}",
+     *   summary="Mettre à jour un compte",
+     *   tags={"Comptes"},
+     *   security={{"bearerAuth": {}}},
+     *   @OA\Parameter(
+     *     name="compteId",
+     *     in="path",
+     *     required=true,
+     *     @OA\Schema(type="string", format="uuid")
+     *   ),
+     *   @OA\RequestBody(
+     *     required=true,
+     *     @OA\JsonContent(
+     *       type="object",
+     *       @OA\Property(property="statut", type="string", enum={"actif","bloque","ferme"}),
+     *       @OA\Property(property="motifBlocage", type="string", nullable=true),
+     *       @OA\Property(property="metadata", type="object", nullable=true)
+     *     )
+     *   ),
+     *   @OA\Response(
+     *     response=200,
+     *     description="Compte mis à jour avec succès",
+     *     @OA\JsonContent(
+     *       @OA\Property(property="success", type="boolean", example=true),
+     *       @OA\Property(property="message", type="string", example="Compte mis à jour avec succès"),
+     *       @OA\Property(property="data", type="object", ref="#/components/schemas/Compte")
+     *     )
+     *   ),
+     *   @OA\Response(response=404, description="Compte non trouvé"),
+     *   @OA\Response(response=422, description="Données invalides"),
+     *   @OA\Response(response=500, description="Erreur interne du serveur")
+     * )
+     */
+    // PATCH monteiro.daisa/v1/comptes/{compteId}
+    public function update(Request $request, string $compteId)
+    {
+        try {
+            $compte = Compte::find($compteId);
+            if (!$compte) {
+                return $this->errorResponse('Compte non trouvé', 404);
+            }
+
+            $validated = $request->validate([
+                'statut' => 'sometimes|in:actif,bloque,ferme',
+                'motifBlocage' => 'required_if:statut,bloque|string|nullable',
+                'metadata' => 'sometimes|array',
+            ]);
+
+            // Mise à jour du statut si fourni
+            if (isset($validated['statut'])) {
+                $compte->statut = $validated['statut'];
+                
+                // Si le compte est bloqué, on enregistre le motif
+                if ($validated['statut'] === 'bloque' && isset($validated['motifBlocage'])) {
+                    $metadata = $compte->metadata ?? [];
+                    $metadata['motifBlocage'] = $validated['motifBlocage'];
+                    $compte->metadata = $metadata;
+                } 
+                // Si le compte est réactivé, on supprime le motif de blocage
+                elseif ($validated['statut'] === 'actif') {
+                    $metadata = $compte->metadata ?? [];
+                    unset($metadata['motifBlocage']);
+                    $compte->metadata = $metadata;
+                }
+                // Si le compte est fermé, on enregistre la date de fermeture
+                elseif ($validated['statut'] === 'ferme') {
+                    $metadata = $compte->metadata ?? [];
+                    $metadata['dateFermeture'] = now()->toDateTimeString();
+                    $compte->metadata = $metadata;
+                }
+            }
+
+            // Mise à jour des métadonnées si fournies
+            if (isset($validated['metadata'])) {
+                $currentMetadata = $compte->metadata ?? [];
+                $compte->metadata = array_merge($currentMetadata, $validated['metadata']);
+            }
+
+            $compte->save();
+
+            return $this->successResponse(
+                $this->formatCompteData($compte),
+                'Compte mis à jour avec succès'
+            );
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur de validation',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (\Throwable $e) {
+            Log::error('Comptes.update error: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return $this->errorResponse('Erreur lors de la mise à jour du compte', 500);
+        }
+    }
+
     // GET monteiro.daisa/v1/comptes/{clientId}
     public function showByClient(string $clientId)
     {
