@@ -230,4 +230,88 @@ class CompteController extends Controller
             return response()->json(['success' => false, 'message' => 'Erreur interne'], 500);
         }
     }
+
+    /**
+     * @OA\Delete(
+     *   path="/monteiro.daisa/v1/comptes/{compteId}",
+     *   summary="Supprimer un compte (soft delete)",
+     *   tags={"Comptes"},
+     *   security={{"bearerAuth": {}}},
+     *   @OA\Parameter(
+     *     name="compteId",
+     *     in="path",
+     *     required=true,
+     *     @OA\Schema(type="string", format="uuid")
+     *   ),
+     *   @OA\Response(
+     *     response=200,
+     *     description="Compte marqué comme supprimé avec succès",
+     *     @OA\JsonContent(
+     *       @OA\Property(property="success", type="boolean", example=true),
+     *       @OA\Property(property="message", type="string", example="Compte supprimé avec succès"),
+     *       @OA\Property(
+     *         property="data",
+     *         type="object",
+     *         @OA\Property(property="id", type="string", format="uuid", example="550e8400-e29b-41d4-a716-446655440000"),
+     *         @OA\Property(property="numeroCompte", type="string", example="C00123456"),
+     *         @OA\Property(property="statut", type="string", enum={"actif","bloque","ferme"}, example="ferme"),
+     *         @OA\Property(property="dateFermeture", type="string", format="date-time", example="2025-10-19T11:15:00Z")
+     *       )
+     *     )
+     *   ),
+     *   @OA\Response(response=404, description="Compte non trouvé"),
+     *   @OA\Response(response=500, description="Erreur interne du serveur")
+     * )
+     */
+    // DELETE monteiro.daisa/v1/comptes/{compteId}
+    public function destroy(string $compteId)
+    {
+        try {
+            $compte = Compte::find($compteId);
+            
+            if (!$compte) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Compte non trouvé',
+                    'errors' => [
+                        'message' => 'Aucun compte trouvé avec cet ID',
+                        'details' => [
+                            'compteId' => $compteId,
+                        ],
+                    ],
+                ], 404);
+            }
+
+            // Mise à jour du statut et de la date de fermeture avant la suppression
+            $compte->update([
+                'statut' => 'ferme',
+                'dateFermeture' => now()
+            ]);
+
+            // Suppression logique
+            $compte->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Compte supprimé avec succès',
+                'data' => [
+                    'id' => $compte->id,
+                    'numeroCompte' => $compte->numeroCompte,
+                    'statut' => $compte->statut,
+                    'dateFermeture' => $compte->dateFermeture ? $compte->dateFermeture->toIso8601String() : null,
+                ]
+            ]);
+
+        } catch (\Throwable $e) {
+            Log::error('Erreur lors de la suppression du compte: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+                'compteId' => $compteId
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la suppression du compte',
+                'error' => config('app.debug') ? $e->getMessage() : 'Erreur interne du serveur'
+            ], 500);
+        }
+    }
 }
