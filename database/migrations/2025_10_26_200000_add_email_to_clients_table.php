@@ -9,7 +9,7 @@ return new class extends Migration {
     {
         Schema::table('clients', function (Blueprint $table) {
             if (!Schema::hasColumn('clients', 'email')) {
-                $table->string('email')->unique()->nullable()->after('prenom');
+                $table->string('email')->unique ()->nullable()->after('prenom');
             }
         });
     }
