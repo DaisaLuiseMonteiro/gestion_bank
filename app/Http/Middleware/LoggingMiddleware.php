@@ -5,6 +5,8 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use App\Facades\AuditLog;
+use App\Models\Admin;
 
 class LoggingMiddleware
 {
@@ -34,6 +36,34 @@ class LoggingMiddleware
                 'method' => $method,
                 'path' => $path,
                 'status' => $response->getStatusCode(),
+            ]);
+
+            $user = $request->user();
+            $adminId = null;
+            $userId = null;
+            if ($user) {
+                $userId = $user->id;
+                $adminId = Admin::where('user_id', $user->id)->value('id');
+            }
+
+            $payload = null;
+            try {
+                $payload = $request->all();
+            } catch (\Throwable $e) {
+                $payload = null;
+            }
+
+            AuditLog::write([
+                'admin_id' => $adminId,
+                'user_id' => $userId,
+                'operation' => $operation,
+                'resource' => 'comptes',
+                'method' => $method,
+                'path' => $path,
+                'ip' => $request->ip(),
+                'message' => $operation.' compte',
+                'payload' => $payload,
+                'status_code' => $response->getStatusCode(),
             ]);
         }
 

@@ -64,6 +64,45 @@ class CompteController extends Controller
         }
     }
 
+    // DELETE monteiro.daisa/v1/comptes/{compteId}
+    public function destroy(string $compteId)
+    {
+        try {
+            $compte = Compte::find($compteId);
+            if (!$compte) {
+                return response()->json([
+                    'success' => false,
+                    'error' => [
+                        'code' => 'COMPTE_NOT_FOUND',
+                        'message' => "Le compte avec l'ID spécifié n'existe pas",
+                        'details' => [ 'compteId' => $compteId ],
+                    ],
+                ], 404);
+            }
+
+            $nowIso = now()->toISOString();
+            $metadata = $compte->metadata ?? [];
+            $metadata['dateFermeture'] = $nowIso;
+            $compte->metadata = $metadata;
+            $compte->statut = 'ferme';
+            $compte->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Compte supprimé avec succès',
+                'data' => [
+                    'id' => $compte->id,
+                    'numeroCompte' => $compte->numeroCompte,
+                    'statut' => $compte->statut,
+                    'dateFermeture' => $metadata['dateFermeture'] ?? null,
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Comptes.destroy error: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json(['success' => false, 'message' => 'Erreur interne'], 500);
+        }
+    }
+
     private function formatCompteData(Compte $c): array
     {
         return [
