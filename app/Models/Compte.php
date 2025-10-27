@@ -49,6 +49,43 @@ class Compte extends Model
         'dateCreation' => 'date',
     ];
 
+    /**
+     * Règles de validation pour la création d'un compte
+     */
+    public static function createRules(): array
+    {
+        return [
+            'client_id' => 'required|uuid|exists:clients,id',
+            'type' => 'required|in:cheque,epargne',
+            'devise' => 'required|string|size:3',
+            'statut' => 'sometimes|in:actif,bloque,ferme',
+            'metadata' => 'sometimes|array'
+        ];
+    }
+
+    /**
+     * Règles de validation pour la mise à jour d'un compte
+     */
+    public static function updateRules(): array
+    {
+        return [
+            'type' => 'sometimes|in:cheque,epargne',
+            'devise' => 'sometimes|string|size:3',
+            'statut' => 'sometimes|in:actif,bloque,ferme',
+            'metadata' => 'sometimes|array'
+        ];
+    }
+
+    /**
+     * Valider les données du compte
+     */
+    public static function validate(array $data, bool $isUpdate = false): array
+    {
+        $rules = $isUpdate ? static::updateRules() : static::createRules();
+        
+        return validator($data, $rules)->validate();
+    }
+
     // Génération automatique de l'UUID et numéro de compte
     protected static function boot(): void
     {
