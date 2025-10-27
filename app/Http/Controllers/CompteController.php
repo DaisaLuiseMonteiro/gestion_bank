@@ -62,7 +62,7 @@ class CompteController extends Controller
             Log::error('Comptes.index error: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
             return response()->json(['success' => false, 'message' => 'Erreur interne'], 500);
         }
-
+    }
 
     private function formatCompteData(Compte $c): array
     {
