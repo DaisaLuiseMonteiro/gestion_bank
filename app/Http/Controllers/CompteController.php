@@ -7,9 +7,8 @@ use App\Models\Client;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Http\Request;
 use App\Http\Requests\Compte\ListComptesRequest;
-use App\Http\Requests\Compte\UpdateCompteRequest;
 use App\Services\CompteService;
-use Illuminate\Support\Facades\DB;
+use App\Http\Requests\Compte\DeleteCompteRequest;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
@@ -87,74 +86,76 @@ class CompteController extends Controller
 
     /**
      * @OA\Delete(
-     *   path="/monteiro.daisa/v1/comptes/{compteId}",
-     *   summary="Supprimer (soft delete) un compte",
-     *   tags={"Comptes"},
-     *   security={{"bearerAuth": {}}},
-     *   @OA\Parameter(
-     *     name="compteId",
-     *     in="path",
-     *     required=true,
-     *     @OA\Schema(type="string", format="uuid")
-     *   ),
-     *   @OA\Response(
-     *     response=200,
-     *     description="Compte supprimé (fermé) avec succès",
-     *     @OA\JsonContent(
-     *       type="object",
-     *       @OA\Property(property="success", type="boolean", example=true),
-     *       @OA\Property(property="message", type="string", example="Compte supprimé avec succès"),
-     *       @OA\Property(
-     *         property="data",
-     *         type="object",
-     *         @OA\Property(property="id", type="string", format="uuid"),
-     *         @OA\Property(property="numeroCompte", type="string", example="C00123456"),
-     *         @OA\Property(property="statut", type="string", example="ferme"),
-     *         @OA\Property(property="dateFermeture", type="string", format="date-time")
-     *       )
+     *     path="/monteiro.daisa/v1/comptes/{compteId}",
+     *     summary="Fermer un compte",
+     *     tags={"Comptes"},
+     *     @OA\Parameter(
+     *         name="compteId",
+     *         in="path",
+     *         required=true,
+     *         description="ID du compte à fermer",
+     *         @OA\Schema(type="string", format="uuid")
+     *     ),
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"motif_fermeture"},
+     *             @OA\Property(property="motif_fermeture", type="string", example="Fermeture à la demande du client")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Compte fermé avec succès",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Compte fermé avec succès"),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="object",
+     *                 @OA\Property(property="id", type="string", format="uuid"),
+     *                 @OA\Property(property="numeroCompte", type="string"),
+     *                 @OA\Property(property="statut", type="string", enum={"actif","bloque","ferme"}),
+     *                 @OA\Property(property="dateFermeture", type="string", format="date-time")
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Compte non trouvé"
      *     )
-     *   ),
-     *   @OA\Response(response=404, description="Compte introuvable")
      * )
      */
-    // DELETE monteiro.daisa/v1/comptes/{compteId}
-    public function destroy(string $compteId)
+    public function destroy(DeleteCompteRequest $request, string $compteId)
     {
         try {
             $compte = Compte::find($compteId);
+            
             if (!$compte) {
                 return response()->json([
                     'success' => false,
                     'error' => [
                         'code' => 'COMPTE_NOT_FOUND',
-                        'message' => "Le compte avec l'ID spécifié n'existe pas",
-                        'details' => [ 'compteId' => $compteId ],
+                        'message' => 'Le compte spécifié est introuvable',
+                        'details' => [
+                            'compteId' => $compteId,
+                        ],
                     ],
                 ], 404);
             }
 
-            $nowIso = now()->toISOString();
-            $metadata = $compte->metadata ?? [];
-            $metadata['dateFermeture'] = $nowIso;
-            $compte->metadata = $metadata;
-            $compte->statut = 'ferme';
-            $compte->save();
+            // Utilisation de la méthode du modèle pour fermer le compte
+            $compte->fermerCompte($request->input('motif_fermeture'));
 
             return response()->json([
                 'success' => true,
-                'message' => 'Compte supprimé avec succès',
+                'message' => 'Compte fermé avec succès',
                 'data' => [
                     'id' => $compte->id,
                     'numeroCompte' => $compte->numeroCompte,
                     'statut' => $compte->statut,
-                    'dateFermeture' => $metadata['dateFermeture'] ?? null,
+                    'dateFermeture' => $compte->deleted_at->toIso8601String(),
                 ],
             ]);
-        } catch (\Throwable $e) {
-            Log::error('Comptes.destroy error: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
-            return response()->json(['success' => false, 'message' => 'Erreur interne'], 500);
-        }
-    }
 
     /**
      * @OA\Post(
@@ -562,106 +563,5 @@ class CompteController extends Controller
         ];
     }
 
-    /**
-     * @OA\Patch(
-     *   path="/monteiro.daisa/v1/comptes/{compteId}",
-     *   summary="Mettre à jour les informations d'un compte",
-     *   tags={"Comptes"},
-     *   @OA\Parameter(name="compteId", in="path", required=true, @OA\Schema(type="string", format="uuid")),
-     *   @OA\RequestBody(
-     *     required=true,
-     *     @OA\JsonContent(
-     *       type="object",
-     *       @OA\Property(property="titulaire", type="string", example="Amadou Diallo Junior"),
-     *       @OA\Property(
-     *         property="informationsClient",
-     *         type="object",
-     *         @OA\Property(property="telephone", type="string", example="771234568"),
-     *         @OA\Property(property="email", type="string", example="client@example.com"),
-     *         @OA\Property(property="password", type="string", example="nouveaumotdepasse"),
-     *         @OA\Property(property="nci", type="string", example="1234567890123")
-     *       )
-     *     )
-     *   ),
-     *   @OA\Response(response=200, description="Compte mis à jour avec succès"),
-     *   @OA\Response(response=404, description="Compte non trouvé"),
-     *   @OA\Response(response=422, description="Erreur de validation")
-     * )
-     */
-    public function update(UpdateCompteRequest $request, string $compteId)
-    {
-        try {
-            return DB::transaction(function () use ($request, $compteId) {
-                // Récupérer le compte
-                $compte = Compte::findOrFail($compteId);
-                $client = $compte->client;
-                
-                // Mettre à jour les champs du compte si fournis
-                if ($request->has('titulaire')) {
-                    $compte->titulaire = $request->titulaire;
-                }
-                
-                // Mettre à jour les informations du client si fournies
-                if ($request->has('informationsClient')) {
-                    $clientData = $request->informationsClient;
-                    
-                    if (isset($clientData['telephone'])) {
-                        $client->telephone = $clientData['telephone'];
-                    }
-                    
-                    if (isset($clientData['email'])) {
-                        $client->email = $clientData['email'] ?: null;
-                    }
-                    
-                    if (isset($clientData['password'])) {
-                        $client->password = bcrypt($clientData['password']);
-                    }
-                    
-                    if (isset($clientData['nci'])) {
-                        $client->nci = $clientData['nci'];
-                    }
-                    
-                    $client->save();
-                }
-                
-                $compte->save();
-                $compte->refresh();
-                
-                // Mettre à jour les métadonnées
-                $metadata = array_merge($compte->metadata ?? [], [
-                    'derniereModification' => now()->toIso8601String(),
-                    'version' => ($compte->metadata['version'] ?? 0) + 1
-                ]);
-                
-                $compte->update(['metadata' => $metadata]);
-                
-                return $this->successResponse(
-                    $this->formatCompteData($compte),
-                    'Compte mis à jour avec succès',
-                    200
-                );
-                
-            });
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            return $this->errorResponse('Compte non trouvé', 404);
-        } catch (\Exception $e) {
-            Log::error('Erreur lors de la mise à jour du compte: ' . $e->getMessage());
-            return $this->errorResponse('Erreur lors de la mise à jour du compte', 500);
-        }
-    }
-    
-    private function formatCompteData($compte)
-    {
-        return [
-            'id' => $compte->id,
-            'numeroCompte' => $compte->numero_compte,
-            'titulaire' => $compte->titulaire,
-            'type' => $compte->type,
-            'solde' => $compte->solde,
-            'devise' => $compte->devise,
-            'dateCreation' => $compte->created_at->toIso8601String(),
-            'statut' => $compte->statut,
-            'metadata' => $compte->metadata
-        ];
-    }
+    // ... (autres méthodes inchangées)
 }
