@@ -125,31 +125,6 @@
                 }
             }
         },
-        "/monteiro.daisa/v1/clients/{clientId}/comptes": {
-            "get": {
-                "tags": [
-                    "Comptes"
-                ],
-                "summary": "Lister les comptes d'un client (création si aucun)",
-                "operationId": "d3f5e88514ad35d9f0402d85675a7bab",
-                "parameters": [
-                    {
-                        "name": "clientId",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Liste des comptes du client"
-                    }
-                }
-            }
-        },
         "/monteiro.daisa/v1/comptes/{compteId}": {
             "get": {
                 "tags": [
@@ -174,6 +149,100 @@
                     },
                     "404": {
                         "description": "Compte introuvable"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Comptes"
+                ],
+                "summary": "Supprimer (soft delete) un compte",
+                "operationId": "7e36f7fcc451fdca3cedea8f19e2a61f",
+                "parameters": [
+                    {
+                        "name": "compteId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Compte supprimé (fermé) avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Compte supprimé avec succès"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "id": {
+                                                    "type": "string",
+                                                    "format": "uuid"
+                                                },
+                                                "numeroCompte": {
+                                                    "type": "string",
+                                                    "example": "C00123456"
+                                                },
+                                                "statut": {
+                                                    "type": "string",
+                                                    "example": "ferme"
+                                                },
+                                                "dateFermeture": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Compte introuvable"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/monteiro.daisa/v1/clients/{clientId}/comptes": {
+            "get": {
+                "tags": [
+                    "Comptes"
+                ],
+                "summary": "Lister les comptes d'un client (création si aucun)",
+                "operationId": "d3f5e88514ad35d9f0402d85675a7bab",
+                "parameters": [
+                    {
+                        "name": "clientId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Liste des comptes du client"
                     }
                 }
             }
