@@ -7,8 +7,11 @@ use App\Models\Client;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Http\Request;
 use App\Http\Requests\Compte\ListComptesRequest;
+use App\Http\Requests\Compte\UpdateCompteRequest;
 use App\Services\CompteService;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class CompteController extends Controller
 {
