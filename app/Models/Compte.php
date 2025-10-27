@@ -15,7 +15,7 @@ use Illuminate\Support\Str;
  *     @OA\Property(property="id", type="string", format="uuid", description="Account UUID"),
  *     @OA\Property(property="numeroCompte", type="string", description="Account number"),
  *     @OA\Property(property="titulaire", type="string", description="Account holder name"),
- *     @OA\Property(property="type", type="string", enum={"courant","epargne"}, description="Account type"),
+ *     @OA\Property(property="type", type="string", enum={"cheque","epargne"}, description="Account type"),
  *     @OA\Property(property="solde", type="number", format="float", description="Account balance"),
  *     @OA\Property(property="devise", type="string", description="Currency"),
  *     @OA\Property(property="dateCreation", type="string", format="date", description="Creation date"),
@@ -37,7 +37,6 @@ class Compte extends Model
         'numeroCompte',
         'titulaire',
         'type',
-        // 'solde', // Supprimé car calculé dynamiquement
         'devise',
         'dateCreation',
         'statut',

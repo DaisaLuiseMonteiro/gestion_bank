@@ -6,6 +6,8 @@ use App\Models\Compte;
 use App\Models\Client;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Http\Request;
+use App\Http\Requests\Compte\ListComptesRequest;
+use App\Services\CompteService;
 use Illuminate\Support\Facades\Log;
 
 class CompteController extends Controller
@@ -19,7 +21,7 @@ class CompteController extends Controller
      *   tags={"Comptes"},
      *   @OA\Parameter(name="page", in="query", required=false, @OA\Schema(type="integer")),
      *   @OA\Parameter(name="limit", in="query", required=false, @OA\Schema(type="integer")),
-     *   @OA\Parameter(name="type", in="query", required=false, @OA\Schema(type="string", enum={"courant","epargne","cheque"})),
+     *   @OA\Parameter(name="type", in="query", required=false, @OA\Schema(type="string", enum={"cheque","epargne"})),
      *   @OA\Parameter(name="statut", in="query", required=false, @OA\Schema(type="string", enum={"actif","bloque","ferme"})),
      *   @OA\Parameter(name="search", in="query", required=false, @OA\Schema(type="string")),
      *   @OA\Parameter(name="sort", in="query", required=false, @OA\Schema(type="string", enum={"dateCreation","titulaire"})),
@@ -28,30 +30,11 @@ class CompteController extends Controller
      * )
      */
     // GET monteiro.daisa/v1/comptes
-    public function index(Request $request)
+    public function index(ListComptesRequest $request, CompteService $service)
     {
         try {
-            $query = Compte::query();
-
-        // Filtrage et tri délégués au modèle via scopes
-        $query->when($request->filled('type'), fn($q) => $q->where('type', $request->string('type')));
-        $query->when($request->filled('statut'), fn($q) => $q->where('statut', $request->string('statut')));
-        $query->when($request->filled('search'), function ($q) use ($request) {
-            $s = $request->string('search');
-            $q->where(function ($qq) use ($s) {
-                $qq->where('titulaire', 'like', "%$s%")
-                   ->orWhere('numeroCompte', 'like', "%$s%");
-            });
-        });
-
-        $sort = in_array($request->string('sort'), ['dateCreation','titulaire']) ? $request->string('sort') : 'dateCreation';
-        $order = $request->string('order') === 'asc' ? 'asc' : 'desc';
-        $query->orderBy($sort, $order);
-
-        $page = max(1, (int) $request->input('page', 1));
-        $limit = min(100, max(1, (int) $request->input('limit', 10)));
-
-            $paginator = $query->paginate($limit, ['*'], 'page', $page);
+            $filters = $request->filters();
+            $paginator = $service->list($filters);
 
             $data = $paginator->getCollection()->map(fn($c) => $this->formatCompteData($c));
 
@@ -139,6 +122,111 @@ class CompteController extends Controller
             return $this->successResponse($data);
         } catch (\Throwable $e) {
             Log::error('Comptes.byClient error: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json(['success' => false, 'message' => 'Erreur interne'], 500);
+        }
+    }
+
+    /**
+     * @OA\Get(
+     *   path="/monteiro.daisa/v1/comptes/{compteId}",
+     *   summary="Récupérer un compte par son ID",
+     *   tags={"Comptes"},
+     *   @OA\Parameter(
+     *     name="compteId",
+     *     in="path",
+     *     required=true,
+     *     @OA\Schema(type="string", format="uuid")
+     *   ),
+     *   @OA\Response(response=200, description="Compte trouvé"),
+     *   @OA\Response(response=404, description="Compte introuvable")
+     * )
+     */
+    // GET monteiro.daisa/v1/comptes/{compteId}
+    public function show(string $compteId)
+    {
+        try {
+            $compte = Compte::find($compteId);
+            if (!$compte) {
+                return response()->json([
+                    'success' => false,
+                    'error' => [
+                        'code' => 'COMPTE_NOT_FOUND',
+                        'message' => "Le compte avec l'ID spécifié n'existe pas",
+                        'details' => [
+                            'compteId' => $compteId,
+                        ],
+                    ],
+                ], 404);
+            }
+
+            $dateCreation = $compte->dateCreation instanceof \Illuminate\Support\Carbon
+                ? $compte->dateCreation->toISOString()
+                : (string) $compte->dateCreation;
+
+            $data = [
+                'id' => $compte->id,
+                'numeroCompte' => $compte->numeroCompte,
+                'titulaire' => $compte->titulaire,
+                'type' => $compte->type,
+                'solde' => $compte->getSolde(),
+                'devise' => $compte->devise,
+                'dateCreation' => $dateCreation,
+                'statut' => $compte->statut,
+                'motifBlocage' => data_get($compte->metadata, 'motifBlocage'),
+                'metadata' => $compte->metadata,
+            ];
+
+            return response()->json([
+                'success' => true,
+                'data' => $data,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Comptes.show error: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json(['success' => false, 'message' => 'Erreur interne'], 500);
+        }
+    }
+
+    // GET monteiro.daisa/v1/comptes/{clientId}
+    public function showByClient(string $clientId)
+    {
+        try {
+            $compte = Compte::where('client_id', $clientId)->first();
+            if (!$compte) {
+                return response()->json([
+                    'success' => false,
+                    'error' => [
+                        'code' => 'COMPTE_NOT_FOUND',
+                        'message' => "Le compte avec l'ID spécifié n'existe pas",
+                        'details' => [
+                            'compteId' => $clientId,
+                        ],
+                    ],
+                ], 404);
+            }
+
+            $dateCreation = $compte->dateCreation instanceof \Illuminate\Support\Carbon
+                ? $compte->dateCreation->toISOString()
+                : (string) $compte->dateCreation;
+
+            $data = [
+                'id' => $compte->id,
+                'numeroCompte' => $compte->numeroCompte,
+                'titulaire' => $compte->titulaire,
+                'type' => $compte->type,
+                'solde' => $compte->getSolde(),
+                'devise' => $compte->devise,
+                'dateCreation' => $dateCreation,
+                'statut' => $compte->statut,
+                'motifBlocage' => data_get($compte->metadata, 'motifBlocage'),
+                'metadata' => $compte->metadata,
+            ];
+
+            return response()->json([
+                'success' => true,
+                'data' => $data,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Comptes.showByClient error: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
             return response()->json(['success' => false, 'message' => 'Erreur interne'], 500);
         }
     }
