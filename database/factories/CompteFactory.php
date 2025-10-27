@@ -13,9 +13,9 @@ class CompteFactory extends Factory
 
     public function definition(): array
     {
-        $types = ['epargne', 'cheque', 'courant'];
+        $types = ['epargne', 'cheque'];
         $statuts = ['actif', 'bloque', 'ferme'];
-        $devises = ['FCFA', 'USD', 'EUR']; // Changé XOF en FCFA
+        $devises = ['FCFA'];
 
         // Noms sénégalais courants pour les titulaires
         $prenomsHomme = ['Mamadou', 'Ibrahima', 'Moussa', 'Abdoulaye', 'Ousmane', 'Cheikh', 'Modou', 'Amadou', 'Samba', 'Babacar'];
@@ -34,7 +34,7 @@ class CompteFactory extends Factory
             // numeroCompte sera généré par le modèle
             'titulaire' => $titulaire,
             'type' => $this->faker->randomElement($types),
-            'devise' => $this->faker->randomElement($devises),
+            'devise' => 'FCFA',
             'dateCreation' => $this->faker->date(),
             'statut' => $this->faker->randomElement($statuts),
             'metadata' => [
