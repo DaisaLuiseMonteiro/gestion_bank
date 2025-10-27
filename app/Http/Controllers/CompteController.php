@@ -33,16 +33,41 @@ class CompteController extends Controller
      * )
      */
     // GET monteiro.daisa/v1/comptes
-    public function index(ListComptesRequest $request, CompteService $service)
+    public function index(Request $request)
     {
         try {
-            $filters = $request->filters();
-            $paginator = $service->list($filters);
-
+            $perPage = $request->input('limit', 15);
+            $page = $request->input('page', 1);
+            
+            $query = Compte::query();
+            
+            // Filtres
+            if ($type = $request->input('type')) {
+                $query->where('type', $type);
+            }
+            
+            if ($statut = $request->input('statut')) {
+                $query->where('statut', $statut);
+            }
+            
+            if ($search = $request->input('search')) {
+                $query->where(function($q) use ($search) {
+                    $q->where('numeroCompte', 'like', "%{$search}%")
+                      ->orWhere('titulaire', 'like', "%{$search}%");
+                });
+            }
+            
+            // Tri
+            $sort = $request->input('sort', 'dateCreation');
+            $order = $request->input('order', 'desc');
+            $query->orderBy($sort, $order);
+            
+            // Pagination
+            $paginator = $query->paginate($perPage, ['*'], 'page', $page);
+            
             $data = $paginator->getCollection()->map(fn($c) => $this->formatCompteData($c));
-
-            $response = [
-                'success' => true,
+            
+            return $this->successResponse([
                 'data' => $data,
                 'pagination' => [
                     'currentPage' => $paginator->currentPage(),
@@ -51,19 +76,12 @@ class CompteController extends Controller
                     'itemsPerPage' => $paginator->perPage(),
                     'hasNext' => $paginator->hasMorePages(),
                     'hasPrevious' => $paginator->currentPage() > 1,
-                ],
-                'links' => [
-                    'self' => url()->current() . '?' . http_build_query(['page' => $paginator->currentPage(), 'limit' => $paginator->perPage()]),
-                    'next' => $paginator->hasMorePages() ? $paginator->url($paginator->currentPage() + 1) : null,
-                    'first' => $paginator->url(1),
-                    'last' => $paginator->url($paginator->lastPage()),
-                ],
-            ];
-
-            return response()->json($response);
+                ]
+            ]);
+            
         } catch (\Throwable $e) {
             Log::error('Comptes.index error: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
-            return response()->json(['success' => false, 'message' => 'Erreur interne'], 500);
+            return $this->errorResponse('Erreur lors de la récupération des comptes');
         }
     }
 
@@ -138,6 +156,131 @@ class CompteController extends Controller
         }
     }
 
+    /**
+     * @OA\Post(
+     *   path="/monteiro.daisa/v1/comptes",
+     *   summary="Créer un nouveau compte",
+     *   tags={"Comptes"},
+     *   security={{"bearerAuth": {}}},
+     *   @OA\RequestBody(
+     *     required=true,
+     *     @OA\JsonContent(
+     *       required={"client_id", "type", "devise"},
+     *       @OA\Property(property="client_id", type="string", format="uuid", example="550e8400-e29b-41d4-a716-446655440000"),
+     *       @OA\Property(property="type", type="string", enum={"cheque", "epargne"}, example="epargne"),
+     *       @OA\Property(property="devise", type="string", example="EUR"),
+     *       @OA\Property(property="statut", type="string", enum={"actif", "bloque", "ferme"}, example="actif"),
+     *       @OA\Property(property="metadata", type="object", example={"source": "api"})
+     *     )
+     *   ),
+     *   @OA\Response(
+     *     response=201,
+     *     description="Compte créé avec succès",
+     *     @OA\JsonContent(
+     *       @OA\Property(property="success", type="boolean", example=true),
+     *       @OA\Property(property="data", type="object", ref="#/components/schemas/Compte")
+     *     )
+     *   ),
+     *   @OA\Response(response=422, description="Erreur de validation")
+     * )
+     */
+    public function store(Request $request)
+    {
+        try {
+            // Validation via le modèle
+            $validated = Compte::validate($request->all());
+            
+            // Création du compte
+            $compte = Compte::create([
+                'numeroCompte' => 'C' . Str::random(8),
+                'titulaire' => $validated['titulaire'] ?? 'Titulaire inconnu',
+                'type' => $validated['type'],
+                'devise' => $validated['devise'],
+                'statut' => $validated['statut'] ?? 'actif',
+                'metadata' => $validated['metadata'] ?? [],
+                'client_id' => $validated['client_id'],
+                'dateCreation' => now()
+            ]);
+
+            return $this->successResponse(
+                $this->formatCompteDetail($compte),
+                201
+            );
+
+        } catch (\Throwable $e) {
+            Log::error('Comptes.store error: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+                'input' => $request->all()
+            ]);
+            return $this->errorResponse('Erreur lors de la création du compte');
+        }
+    }
+
+    /**
+     * @OA\Put(
+     *   path="/monteiro.daisa/v1/comptes/{compteId}",
+     *   summary="Mettre à jour un compte",
+     *   tags={"Comptes"},
+     *   security={{"bearerAuth": {}}},
+     *   @OA\Parameter(
+     *     name="compteId",
+     *     in="path",
+     *     required=true,
+     *     @OA\Schema(type="string", format="uuid")
+     *   ),
+     *   @OA\RequestBody(
+     *     required=true,
+     *     @OA\JsonContent(
+     *       @OA\Property(property="type", type="string", enum={"cheque", "epargne"}, example="epargne"),
+     *       @OA\Property(property="devise", type="string", example="EUR"),
+     *       @OA\Property(property="statut", type="string", enum={"actif", "bloque", "ferme"}),
+     *       @OA\Property(property="metadata", type="object")
+     *     )
+     *   ),
+     *   @OA\Response(
+     *     response=200,
+     *     description="Compte mis à jour avec succès",
+     *     @OA\JsonContent(
+     *       @OA\Property(property="success", type="boolean", example=true),
+     *       @OA\Property(property="data", type="object", ref="#/components/schemas/Compte")
+     *     )
+     *   ),
+     *   @OA\Response(response=404, description="Compte non trouvé"),
+     *   @OA\Response(response=422, description="Erreur de validation")
+     * )
+     */
+    public function update(Request $request, string $id)
+    {
+        try {
+            $compte = Compte::findOrFail($id);
+            
+            // Validation via le modèle (mise à jour)
+            $validated = Compte::validate($request->all(), true);
+            
+            // Mise à jour du compte
+            $compte->update($validated);
+
+            return $this->successResponse(
+                $this->formatCompteDetail($compte)
+            );
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return $this->errorResponse(
+                "Le compte avec l'ID spécifié n'existe pas", 
+                404, 
+                'COMPTE_NOT_FOUND', 
+                ['id' => $id]
+            );
+        } catch (\Throwable $e) {
+            Log::error('Comptes.update error: ' . $e->getMessage(), [
+                'id' => $id,
+                'trace' => $e->getTraceAsString(),
+                'input' => $request->all()
+            ]);
+            return $this->errorResponse('Erreur lors de la mise à jour du compte');
+        }
+    }
+
     private function formatCompteData(Compte $c): array
     {
         return [
@@ -151,6 +294,31 @@ class CompteController extends Controller
             'client_id' => $c->client_id,
             'created_at' => optional($c->created_at)->toDateTimeString(),
             'updated_at' => optional($c->updated_at)->toDateTimeString(),
+        ];
+    }
+
+    /**
+     * Formate les détails d'un compte pour la réponse
+     */
+    private function formatCompteDetail(Compte $compte): array
+    {
+        $dateCreation = $compte->dateCreation instanceof \Illuminate\Support\Carbon
+            ? $compte->dateCreation->toISOString()
+            : (string) $compte->dateCreation;
+
+        return [
+            'id' => $compte->id,
+            'numeroCompte' => $compte->numeroCompte,
+            'titulaire' => $compte->titulaire,
+            'type' => $compte->type,
+            'solde' => $compte->solde ?? 0,
+            'devise' => $compte->devise,
+            'dateCreation' => $dateCreation,
+            'statut' => $compte->statut,
+            'client_id' => $compte->client_id,
+            'metadata' => $compte->metadata,
+            'created_at' => $compte->created_at?->toDateTimeString(),
+            'updated_at' => $compte->updated_at?->toDateTimeString(),
         ];
     }
 
@@ -216,92 +384,78 @@ class CompteController extends Controller
      * )
      */
     // GET monteiro.daisa/v1/comptes/{compteId}
+    /**
+     * @OA\Get(
+     *   path="/monteiro.daisa/v1/comptes/{compteId}",
+     *   summary="Récupérer un compte par son ID",
+     *   tags={"Comptes"},
+     *   @OA\Parameter(
+     *     name="compteId",
+     *     in="path",
+     *     required=true,
+     *     description="ID du compte à récupérer",
+     *     @OA\Schema(type="string", format="uuid")
+     *   ),
+     *   @OA\Response(
+     *     response=200,
+     *     description="Compte trouvé",
+     *     @OA\JsonContent(
+     *       type="object",
+     *       @OA\Property(property="success", type="boolean", example=true),
+     *       @OA\Property(
+     *         property="data",
+     *         type="object",
+     *         @OA\Property(property="id", type="string", format="uuid"),
+     *         @OA\Property(property="numeroCompte", type="string", example="C00123456"),
+     *         @OA\Property(property="titulaire", type="string", example="John Doe"),
+     *         @OA\Property(property="type", type="string", enum={"epargne", "courant"}),
+     *         @OA\Property(property="solde", type="number", format="float", example=1000.50),
+     *         @OA\Property(property="devise", type="string", example="EUR"),
+     *         @OA\Property(property="dateCreation", type="string", format="date-time"),
+     *         @OA\Property(property="statut", type="string", enum={"actif", "bloque", "ferme"}),
+     *         @OA\Property(property="motifBlocage", type="string", nullable=true),
+     *         @OA\Property(property="metadata", type="object")
+     *       )
+     *     )
+     *   ),
+     *   @OA\Response(
+     *     response=404,
+     *     description="Compte non trouvé",
+     *     @OA\JsonContent(
+     *       @OA\Property(property="success", type="boolean", example=false),
+     *       @OA\Property(property="error", type="object",
+     *         @OA\Property(property="code", type="string", example="COMPTE_NOT_FOUND"),
+     *         @OA\Property(property="message", type="string", example="Le compte avec l'ID spécifié n'existe pas"),
+     *         @OA\Property(property="details", type="object",
+     *           @OA\Property(property="compteId", type="string", format="uuid")
+     *         )
+     *       )
+     *     )
+     *   )
+     * )
+     */
     public function show(string $compteId)
     {
         try {
             $compte = Compte::find($compteId);
+            
             if (!$compte) {
-                return response()->json([
-                    'success' => false,
-                    'error' => [
-                        'code' => 'COMPTE_NOT_FOUND',
-                        'message' => "Le compte avec l'ID spécifié n'existe pas",
-                        'details' => [
-                            'compteId' => $compteId,
-                        ],
-                    ],
-                ], 404);
+                return $this->errorResponse(
+                    "Le compte avec l'ID spécifié n'existe pas",
+                    404,
+                    'COMPTE_NOT_FOUND',
+                    ['compteId' => $compteId]
+                );
             }
 
-            $dateCreation = $compte->dateCreation instanceof \Illuminate\Support\Carbon
-                ? $compte->dateCreation->toISOString()
-                : (string) $compte->dateCreation;
-
-            $data = [
-                'id' => $compte->id,
-                'numeroCompte' => $compte->numeroCompte,
-                'titulaire' => $compte->titulaire,
-                'type' => $compte->type,
-                'solde' => $compte->getSolde(),
-                'devise' => $compte->devise,
-                'dateCreation' => $dateCreation,
-                'statut' => $compte->statut,
-                'motifBlocage' => data_get($compte->metadata, 'motifBlocage'),
-                'metadata' => $compte->metadata,
-            ];
-
-            return response()->json([
-                'success' => true,
-                'data' => $data,
-            ]);
+            return $this->successResponse($this->formatCompteDetail($compte));
+            
         } catch (\Throwable $e) {
-            Log::error('Comptes.show error: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
-            return response()->json(['success' => false, 'message' => 'Erreur interne'], 500);
-        }
-    }
-
-    // GET monteiro.daisa/v1/comptes/{clientId}
-    public function showByClient(string $clientId)
-    {
-        try {
-            $compte = Compte::where('client_id', $clientId)->first();
-            if (!$compte) {
-                return response()->json([
-                    'success' => false,
-                    'error' => [
-                        'code' => 'COMPTE_NOT_FOUND',
-                        'message' => "Le compte avec l'ID spécifié n'existe pas",
-                        'details' => [
-                            'compteId' => $clientId,
-                        ],
-                    ],
-                ], 404);
-            }
-
-            $dateCreation = $compte->dateCreation instanceof \Illuminate\Support\Carbon
-                ? $compte->dateCreation->toISOString()
-                : (string) $compte->dateCreation;
-
-            $data = [
-                'id' => $compte->id,
-                'numeroCompte' => $compte->numeroCompte,
-                'titulaire' => $compte->titulaire,
-                'type' => $compte->type,
-                'solde' => $compte->getSolde(),
-                'devise' => $compte->devise,
-                'dateCreation' => $dateCreation,
-                'statut' => $compte->statut,
-                'motifBlocage' => data_get($compte->metadata, 'motifBlocage'),
-                'metadata' => $compte->metadata,
-            ];
-
-            return response()->json([
-                'success' => true,
-                'data' => $data,
+            Log::error('Comptes.show error: '.$e->getMessage(), [
+                'compteId' => $compteId,
+                'trace' => $e->getTraceAsString()
             ]);
-        } catch (\Throwable $e) {
-            Log::error('Comptes.showByClient error: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
-            return response()->json(['success' => false, 'message' => 'Erreur interne'], 500);
+            return $this->errorResponse('Erreur lors de la récupération du compte');
         }
     }
 
