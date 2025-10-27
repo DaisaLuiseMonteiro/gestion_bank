@@ -7,8 +7,11 @@ use App\Models\Client;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Http\Request;
 use App\Http\Requests\Compte\ListComptesRequest;
+use App\Http\Requests\Compte\UpdateCompteRequest;
 use App\Services\CompteService;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class CompteController extends Controller
 {
@@ -300,5 +303,108 @@ class CompteController extends Controller
             Log::error('Comptes.showByClient error: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
             return response()->json(['success' => false, 'message' => 'Erreur interne'], 500);
         }
+    }
+
+    /**
+     * @OA\Patch(
+     *   path="/monteiro.daisa/v1/comptes/{compteId}",
+     *   summary="Mettre à jour les informations d'un compte",
+     *   tags={"Comptes"},
+     *   @OA\Parameter(name="compteId", in="path", required=true, @OA\Schema(type="string", format="uuid")),
+     *   @OA\RequestBody(
+     *     required=true,
+     *     @OA\JsonContent(
+     *       type="object",
+     *       @OA\Property(property="titulaire", type="string", example="Amadou Diallo Junior"),
+     *       @OA\Property(
+     *         property="informationsClient",
+     *         type="object",
+     *         @OA\Property(property="telephone", type="string", example="771234568"),
+     *         @OA\Property(property="email", type="string", example="client@example.com"),
+     *         @OA\Property(property="password", type="string", example="nouveaumotdepasse"),
+     *         @OA\Property(property="nci", type="string", example="1234567890123")
+     *       )
+     *     )
+     *   ),
+     *   @OA\Response(response=200, description="Compte mis à jour avec succès"),
+     *   @OA\Response(response=404, description="Compte non trouvé"),
+     *   @OA\Response(response=422, description="Erreur de validation")
+     * )
+     */
+    public function update(UpdateCompteRequest $request, string $compteId)
+    {
+        try {
+            return DB::transaction(function () use ($request, $compteId) {
+                // Récupérer le compte
+                $compte = Compte::findOrFail($compteId);
+                $client = $compte->client;
+                
+                // Mettre à jour les champs du compte si fournis
+                if ($request->has('titulaire')) {
+                    $compte->titulaire = $request->titulaire;
+                }
+                
+                // Mettre à jour les informations du client si fournies
+                if ($request->has('informationsClient')) {
+                    $clientData = $request->informationsClient;
+                    
+                    if (isset($clientData['telephone'])) {
+                        $client->telephone = $clientData['telephone'];
+                    }
+                    
+                    if (isset($clientData['email'])) {
+                        $client->email = $clientData['email'] ?: null;
+                    }
+                    
+                    if (isset($clientData['password'])) {
+                        $client->password = bcrypt($clientData['password']);
+                    }
+                    
+                    if (isset($clientData['nci'])) {
+                        $client->nci = $clientData['nci'];
+                    }
+                    
+                    $client->save();
+                }
+                
+                $compte->save();
+                $compte->refresh();
+                
+                // Mettre à jour les métadonnées
+                $metadata = array_merge($compte->metadata ?? [], [
+                    'derniereModification' => now()->toIso8601String(),
+                    'version' => ($compte->metadata['version'] ?? 0) + 1
+                ]);
+                
+                $compte->update(['metadata' => $metadata]);
+                
+                return $this->successResponse(
+                    $this->formatCompteData($compte),
+                    'Compte mis à jour avec succès',
+                    200
+                );
+                
+            });
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return $this->errorResponse('Compte non trouvé', 404);
+        } catch (\Exception $e) {
+            Log::error('Erreur lors de la mise à jour du compte: ' . $e->getMessage());
+            return $this->errorResponse('Erreur lors de la mise à jour du compte', 500);
+        }
+    }
+    
+    private function formatCompteData($compte)
+    {
+        return [
+            'id' => $compte->id,
+            'numeroCompte' => $compte->numero_compte,
+            'titulaire' => $compte->titulaire,
+            'type' => $compte->type,
+            'solde' => $compte->solde,
+            'devise' => $compte->devise,
+            'dateCreation' => $compte->created_at->toIso8601String(),
+            'statut' => $compte->statut,
+            'metadata' => $compte->metadata
+        ];
     }
 }
