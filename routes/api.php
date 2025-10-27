@@ -15,7 +15,7 @@ use App\Http\Controllers\ClientController;
 |
 */
 
-Route::prefix('monteiro.daisa/v1')->group(function () {
+Route::prefix('monteiro.daisa/v1')->middleware('logging')->group(function () {
     // Comptes
     Route::get('comptes', [CompteController::class, 'index']);
     Route::get('clients/{clientId}/comptes', [CompteController::class, 'byClient']);
