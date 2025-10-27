@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
 /**
@@ -27,13 +28,14 @@ use Illuminate\Support\Str;
  */
 class Compte extends Model
 {
-  use HasFactory;
+  use HasFactory, SoftDeletes;
 
     // UUID comme clé primaire
     public $incrementing = false;
     protected $keyType = 'string';
 
     protected $fillable = [
+        'id',
         'numeroCompte',
         'titulaire',
         'type',
@@ -42,6 +44,12 @@ class Compte extends Model
         'statut',
         'metadata',
         'client_id',
+        'deleted_at'
+    ];
+
+    protected $dates = [
+        'deleted_at',
+        'dateCreation'
     ];
 
     protected $casts = [
@@ -50,40 +58,30 @@ class Compte extends Model
     ];
 
     /**
-     * Règles de validation pour la création d'un compte
+     * Supprime le compte de manière logique (soft delete)
+     * 
+     * @param string|null $motifFermeture
+     * @return bool
      */
-    public static function createRules(): array
+    public function fermerCompte(?string $motifFermeture = null): bool
     {
-        return [
-            'client_id' => 'required|uuid|exists:clients,id',
-            'type' => 'required|in:cheque,epargne',
-            'devise' => 'required|string|size:3',
-            'statut' => 'sometimes|in:actif,bloque,ferme',
-            'metadata' => 'sometimes|array'
-        ];
-    }
-
-    /**
-     * Règles de validation pour la mise à jour d'un compte
-     */
-    public static function updateRules(): array
-    {
-        return [
-            'type' => 'sometimes|in:cheque,epargne',
-            'devise' => 'sometimes|string|size:3',
-            'statut' => 'sometimes|in:actif,bloque,ferme',
-            'metadata' => 'sometimes|array'
-        ];
-    }
-
-    /**
-     * Valider les données du compte
-     */
-    public static function validate(array $data, bool $isUpdate = false): array
-    {
-        $rules = $isUpdate ? static::updateRules() : static::createRules();
+        $this->statut = 'ferme';
         
-        return validator($data, $rules)->validate();
+        if ($motifFermeture) {
+            $metadata = $this->metadata ?? [];
+            $metadata['motifFermeture'] = $motifFermeture;
+            $this->metadata = $metadata;
+        }
+        
+        return $this->delete();
+    }
+
+    /**
+     * Récupère uniquement les comptes non supprimés par défaut
+     */
+    public function newQuery($excludeDeleted = true)
+    {
+        return parent::newQuery($excludeDeleted);
     }
 
     // Génération automatique de l'UUID et numéro de compte
