@@ -64,6 +64,38 @@ class CompteController extends Controller
         }
     }
 
+    /**
+     * @OA\Delete(
+     *   path="/monteiro.daisa/v1/comptes/{compteId}",
+     *   summary="Supprimer (soft delete) un compte",
+     *   tags={"Comptes"},
+     *   security={{"bearerAuth": {}}},
+     *   @OA\Parameter(
+     *     name="compteId",
+     *     in="path",
+     *     required=true,
+     *     @OA\Schema(type="string", format="uuid")
+     *   ),
+     *   @OA\Response(
+     *     response=200,
+     *     description="Compte supprimé (fermé) avec succès",
+     *     @OA\JsonContent(
+     *       type="object",
+     *       @OA\Property(property="success", type="boolean", example=true),
+     *       @OA\Property(property="message", type="string", example="Compte supprimé avec succès"),
+     *       @OA\Property(
+     *         property="data",
+     *         type="object",
+     *         @OA\Property(property="id", type="string", format="uuid"),
+     *         @OA\Property(property="numeroCompte", type="string", example="C00123456"),
+     *         @OA\Property(property="statut", type="string", example="ferme"),
+     *         @OA\Property(property="dateFermeture", type="string", format="date-time")
+     *       )
+     *     )
+     *   ),
+     *   @OA\Response(response=404, description="Compte introuvable")
+     * )
+     */
     // DELETE monteiro.daisa/v1/comptes/{compteId}
     public function destroy(string $compteId)
     {
