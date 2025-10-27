@@ -31,7 +31,7 @@ class ListComptesRequest extends FormRequest
             'page' => max(1, (int)($validated['page'] ?? 1)),
             'limit' => min(100, max(1, (int)($validated['limit'] ?? 10))),
             'type' => $validated['type'] ?? null,
-            'statut' => $validated['statut'] ?? null,
+            'statut' => $validated['statut'] ?? 'actif',
             'search' => $validated['search'] ?? null,
             'sort' => in_array(($validated['sort'] ?? ''), ['dateCreation','titulaire']) ? $validated['sort'] : 'dateCreation',
             'order' => (($validated['order'] ?? '') === 'asc') ? 'asc' : 'desc',
