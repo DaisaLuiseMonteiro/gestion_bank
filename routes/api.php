@@ -17,28 +17,14 @@ use App\Http\Controllers\CompteBloqueController;
 */
 
 Route::prefix('monteiro.daisa/v1')->middleware('logging')->group(function () {
-    // Comptes
+    // Toutes les routes sont accessibles sans authentification
     Route::get('comptes', [CompteController::class, 'index']);
     Route::get('clients/{clientId}/comptes', [CompteController::class, 'byClient']);
     Route::get('comptes/{compteId}', [CompteController::class, 'show']);
-    Route::patch('comptes/{compteId}', [CompteController::class, 'update']);
-    
-    // Gestion du blocage des comptes
-    Route::post('comptes/{compteId}/bloquer', [CompteBloqueController::class, 'bloquer'])
-        ->middleware('auth:api');
-    Route::post('comptes/{compteId}/debloquer', [CompteBloqueController::class, 'debloquer'])
-        ->middleware('auth:api');
-
-    // Clients
     Route::get('clients', [ClientController::class, 'index']);
+    
+    // Routes de modification
+    Route::patch('comptes/{compteId}', [CompteController::class, 'update']);
+    Route::post('comptes/{compteId}/bloquer', [CompteBloqueController::class, 'bloquer']);
+    Route::post('comptes/{compteId}/debloquer', [CompteBloqueController::class, 'debloquer']);
 });
-
-// Documentation Swagger
-/**
- * @OA\SecurityScheme(
- *     type="http",
- *     scheme="bearer",
- *     securityScheme="bearerAuth",
- *     bearerFormat="JWT"
- * )
- */

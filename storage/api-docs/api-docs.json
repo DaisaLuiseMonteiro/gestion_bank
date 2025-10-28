@@ -36,6 +36,135 @@
                 }
             }
         },
+        "/monteiro.daisa/v1/comptes/{compteId}/bloquer": {
+            "post": {
+                "tags": [
+                    "Comptes"
+                ],
+                "summary": "Bloquer un compte épargne",
+                "operationId": "21cbc8454233c48d2d28d1841727643e",
+                "parameters": [
+                    {
+                        "name": "compteId",
+                        "in": "path",
+                        "description": "ID du compte à bloquer",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "motif",
+                                    "duree",
+                                    "unite"
+                                ],
+                                "properties": {
+                                    "motif": {
+                                        "type": "string",
+                                        "example": "Activité suspecte détectée"
+                                    },
+                                    "duree": {
+                                        "type": "integer",
+                                        "example": 30
+                                    },
+                                    "unite": {
+                                        "type": "string",
+                                        "enum": [
+                                            "jours",
+                                            "semaines",
+                                            "mois",
+                                            "annees"
+                                        ],
+                                        "example": "jours"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Compte bloqué avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CompteBloque"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Requête invalide"
+                    },
+                    "401": {
+                        "description": "Non autorisé"
+                    },
+                    "404": {
+                        "description": "Compte non trouvé"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/monteiro.daisa/v1/comptes/{compteId}/debloquer": {
+            "post": {
+                "tags": [
+                    "Comptes"
+                ],
+                "summary": "Débloquer un compte épargne",
+                "operationId": "93ec595b40eee1ee334c987ba121311b",
+                "parameters": [
+                    {
+                        "name": "compteId",
+                        "in": "path",
+                        "description": "ID du compte à débloquer",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Compte débloqué avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CompteDebloque"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Requête invalide"
+                    },
+                    "401": {
+                        "description": "Non autorisé"
+                    },
+                    "404": {
+                        "description": "Compte non trouvé"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/monteiro.daisa/v1/comptes": {
             "get": {
                 "tags": [
@@ -260,12 +389,14 @@
                 "tags": [
                     "Comptes"
                 ],
-                "summary": "Mettre à jour un compte",
+                "summary": "Mettre à jour un compte (y compris le blocage/déblocage)",
+                "description": "Permet de mettre à jour le statut d'un compte, y compris le blocage et le déblocage.\\n\\n## Blocage d'un compte\\nPour bloquer un compte, définissez `statut` à 'bloque' et fournissez un `motifBlocage`.\\n\\n## Déblocage d'un compte\\nPour débloquer un compte, définissez `statut` à 'actif'. Le `motifBlocage` sera automatiquement supprimé.",
                 "operationId": "b180c22eb5f24c31922a05142e348793",
                 "parameters": [
                     {
                         "name": "compteId",
                         "in": "path",
+                        "description": "ID du compte à mettre à jour",
                         "required": true,
                         "schema": {
                             "type": "string",
@@ -274,12 +405,17 @@
                     }
                 ],
                 "requestBody": {
+                    "description": "Données de mise à jour du compte",
                     "required": true,
                     "content": {
                         "application/json": {
                             "schema": {
+                                "required": [
+                                    "statut"
+                                ],
                                 "properties": {
                                     "statut": {
+                                        "description": "Nouveau statut du compte. 'bloque' pour bloquer, 'actif' pour débloquer",
                                         "type": "string",
                                         "enum": [
                                             "actif",
@@ -288,10 +424,12 @@
                                         ]
                                     },
                                     "motifBlocage": {
+                                        "description": "Obligatoire si statut='bloque'. Raison du blocage du compte",
                                         "type": "string",
                                         "nullable": true
                                     },
                                     "metadata": {
+                                        "description": "Métadonnées supplémentaires du compte",
                                         "type": "object",
                                         "nullable": true
                                     }
@@ -325,14 +463,84 @@
                             }
                         }
                     },
+                    "400": {
+                        "description": "Requête invalide",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Le motif de blocage est requis"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
                     "404": {
-                        "description": "Compte non trouvé"
+                        "description": "Compte non trouvé",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Compte non trouvé"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
                     },
                     "422": {
-                        "description": "Données invalides"
+                        "description": "Données invalides",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "The given data was invalid."
+                                        },
+                                        "errors": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
                     },
                     "500": {
-                        "description": "Erreur interne du serveur"
+                        "description": "Erreur interne du serveur",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Erreur lors de la mise à jour du compte"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -345,6 +553,73 @@
     },
     "components": {
         "schemas": {
+            "CompteBloque": {
+                "properties": {
+                    "success": {
+                        "type": "boolean",
+                        "example": true
+                    },
+                    "message": {
+                        "type": "string",
+                        "example": "Compte bloqué avec succès"
+                    },
+                    "data": {
+                        "properties": {
+                            "id": {
+                                "type": "string",
+                                "format": "uuid"
+                            },
+                            "statut": {
+                                "type": "string",
+                                "example": "bloque"
+                            },
+                            "motifBlocage": {
+                                "type": "string"
+                            },
+                            "dateBlocage": {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            "dateDeblocagePrevue": {
+                                "type": "string",
+                                "format": "date-time"
+                            }
+                        },
+                        "type": "object"
+                    }
+                },
+                "type": "object"
+            },
+            "CompteDebloque": {
+                "properties": {
+                    "success": {
+                        "type": "boolean",
+                        "example": true
+                    },
+                    "message": {
+                        "type": "string",
+                        "example": "Compte débloqué avec succès"
+                    },
+                    "data": {
+                        "properties": {
+                            "id": {
+                                "type": "string",
+                                "format": "uuid"
+                            },
+                            "statut": {
+                                "type": "string",
+                                "example": "actif"
+                            },
+                            "dateDeblocage": {
+                                "type": "string",
+                                "format": "date-time"
+                            }
+                        },
+                        "type": "object"
+                    }
+                },
+                "type": "object"
+            },
             "Client": {
                 "title": "Client",
                 "description": "Client model",
@@ -484,16 +759,23 @@
                 },
                 "type": "object"
             }
+        },
+        "securitySchemes": {
+            "bearerAuth": {
+                "type": "http",
+                "bearerFormat": "JWT",
+                "scheme": "bearer"
+            }
         }
     },
     "tags": [
         {
-            "name": "Clients",
-            "description": "Clients"
+            "name": "Comptes",
+            "description": "Opérations sur les comptes bancaires"
         },
         {
-            "name": "Comptes",
-            "description": "Comptes"
+            "name": "Clients",
+            "description": "Gestion des clients"
         }
     ]
 }
