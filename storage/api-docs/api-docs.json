@@ -176,6 +176,170 @@
                         "description": "Compte introuvable"
                     }
                 }
+            },
+            "delete": {
+                "tags": [
+                    "Comptes"
+                ],
+                "summary": "Supprimer un compte (soft delete)",
+                "operationId": "7e36f7fcc451fdca3cedea8f19e2a61f",
+                "parameters": [
+                    {
+                        "name": "compteId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Compte marqué comme supprimé avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Compte supprimé avec succès"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "id": {
+                                                    "type": "string",
+                                                    "format": "uuid",
+                                                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                                                },
+                                                "numeroCompte": {
+                                                    "type": "string",
+                                                    "example": "C00123456"
+                                                },
+                                                "statut": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "actif",
+                                                        "bloque",
+                                                        "ferme"
+                                                    ],
+                                                    "example": "ferme"
+                                                },
+                                                "dateFermeture": {
+                                                    "type": "string",
+                                                    "format": "date-time",
+                                                    "example": "2025-10-19T11:15:00Z"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Compte non trouvé"
+                    },
+                    "500": {
+                        "description": "Erreur interne du serveur"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "patch": {
+                "tags": [
+                    "Comptes"
+                ],
+                "summary": "Mettre à jour un compte",
+                "operationId": "b180c22eb5f24c31922a05142e348793",
+                "parameters": [
+                    {
+                        "name": "compteId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "statut": {
+                                        "type": "string",
+                                        "enum": [
+                                            "actif",
+                                            "bloque",
+                                            "ferme"
+                                        ]
+                                    },
+                                    "motifBlocage": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "metadata": {
+                                        "type": "object",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Compte mis à jour avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Compte mis à jour avec succès"
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/Compte"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Compte non trouvé"
+                    },
+                    "422": {
+                        "description": "Données invalides"
+                    },
+                    "500": {
+                        "description": "Erreur interne du serveur"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
             }
         }
     },
@@ -244,23 +408,24 @@
             },
             "Compte": {
                 "title": "Account",
-                "description": "Bank account model",
+                "description": "Modèle de compte bancaire avec génération automatique du numéro de compte",
                 "properties": {
                     "id": {
-                        "description": "Account UUID",
+                        "description": "UUID unique du compte",
                         "type": "string",
                         "format": "uuid"
                     },
                     "numeroCompte": {
-                        "description": "Account number",
-                        "type": "string"
+                        "description": "Numéro de compte généré automatiquement au format 'C' + 8 chiffres (ex: C00123456)",
+                        "type": "string",
+                        "readOnly": true
                     },
                     "titulaire": {
-                        "description": "Account holder name",
+                        "description": "Nom du titulaire du compte",
                         "type": "string"
                     },
                     "type": {
-                        "description": "Account type",
+                        "description": "Type de compte (chèque ou épargne)",
                         "type": "string",
                         "enum": [
                             "cheque",
@@ -268,21 +433,22 @@
                         ]
                     },
                     "solde": {
-                        "description": "Account balance",
+                        "description": "Solde calculé automatiquement comme la différence entre les dépôts et les retraits",
                         "type": "number",
-                        "format": "float"
+                        "format": "float",
+                        "readOnly": true
                     },
                     "devise": {
-                        "description": "Currency",
+                        "description": "Devise du compte (ex: FCFA, EUR, USD)",
                         "type": "string"
                     },
                     "dateCreation": {
-                        "description": "Creation date",
+                        "description": "Date de création du compte, définie automatiquement à la création si non fournie",
                         "type": "string",
                         "format": "date"
                     },
                     "statut": {
-                        "description": "Account status",
+                        "description": "Statut du compte: actif (par défaut), bloqué ou fermé",
                         "type": "string",
                         "enum": [
                             "actif",
@@ -291,15 +457,27 @@
                         ]
                     },
                     "client_id": {
-                        "description": "Client UUID",
+                        "description": "UUID du client propriétaire du compte",
                         "type": "string",
                         "format": "uuid"
                     },
+                    "dateFermeture": {
+                        "description": "Date de fermeture du compte, définie automatiquement lors de la suppression logique",
+                        "type": "string",
+                        "format": "date-time"
+                    },
                     "created_at": {
+                        "description": "Date de création",
                         "type": "string",
                         "format": "date-time"
                     },
                     "updated_at": {
+                        "description": "Dernière mise à jour",
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "deleted_at": {
+                        "description": "Date de suppression logique",
                         "type": "string",
                         "format": "date-time"
                     }
