@@ -14,7 +14,6 @@ class CompteFactory extends Factory
     public function definition(): array
     {
         $types = ['epargne', 'cheque'];
-        $statuts = ['actif', 'bloque', 'ferme'];
         $devises = ['FCFA'];
 
         // Noms sénégalais courants pour les titulaires
@@ -36,7 +35,7 @@ class CompteFactory extends Factory
             'type' => $this->faker->randomElement($types),
             'devise' => 'FCFA',
             'dateCreation' => $this->faker->date(),
-            'statut' => $this->faker->randomElement($statuts),
+            'statut' => 'actif',
             'metadata' => [
                 'derniereModification' => $this->faker->dateTime(),
                 'version' => 1
