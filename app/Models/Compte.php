@@ -100,10 +100,6 @@ class Compte extends Model
         'client_id',
     ];
 
-   
-    public function setNumeroCompteAttribute($value)
-    {
-    }
 
     protected $casts = [
         'metadata' => 'array',
@@ -128,19 +124,17 @@ class Compte extends Model
             if (empty($model->dateCreation)) {
                 $model->dateCreation = now();
             }
-        });
-
-        static::saving(function ($model) {
-            // Si le numéro de compte n'est pas défini, en générer un nouveau
-            if (empty($model->numeroCompte)) {
-                do {
-                    $numero = 'C' . str_pad(mt_rand(1, 99999999), 8, '0', STR_PAD_LEFT);
-                } while (self::where('numeroCompte', $numero)->withTrashed()->exists());
-                
-                $model->numeroCompte = $numero;
-            }
+            
+            // Générer un numéro de compte unique
+            do {
+                $numero = 'C' . str_pad(mt_rand(1, 99999999), 8, '0', STR_PAD_LEFT);
+            } while (self::where('numeroCompte', $numero)->withTrashed()->exists());
+            
+            $model->numeroCompte = $numero;
         });
     }
+
+    // Suppression de la méthode setNumeroCompteAttribute si elle existe
 
     public function client()
     {
