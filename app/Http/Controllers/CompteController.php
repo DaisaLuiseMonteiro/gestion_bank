@@ -66,18 +66,33 @@ class CompteController extends Controller
 
     private function formatCompteData(Compte $c): array
     {
-        return [
+        $data = [
             'id' => $c->id,
             'numeroCompte' => $c->numeroCompte,
             'titulaire' => $c->titulaire,
             'type' => $c->type,
+            'solde' => (float) $c->solde,
             'devise' => $c->devise,
-            'dateCreation' => $c->dateCreation instanceof \Illuminate\Support\Carbon ? $c->dateCreation->toDateString() : (string) $c->dateCreation,
+            'dateCreation' => $c->dateCreation instanceof \Illuminate\Support\Carbon 
+                ? $c->dateCreation->toIso8601String() 
+                : (string) $c->dateCreation,
             'statut' => $c->statut,
-            'client_id' => $c->client_id,
-            'created_at' => optional($c->created_at)->toDateTimeString(),
-            'updated_at' => optional($c->updated_at)->toDateTimeString(),
+            'metadata' => $c->metadata ?? (object)[]
         ];
+
+        // Ajouter les informations du client si disponible
+        if ($c->relationLoaded('client')) {
+            $data['client'] = [
+                'id' => $c->client->id,
+                'nom' => $c->client->nom,
+                'prenom' => $c->client->prenom,
+                'telephone' => $c->client->telephone,
+                'email' => $c->client->email,
+                'nci' => $c->client->nci
+            ];
+        }
+
+        return $data;
     }
 
     /**
@@ -188,23 +203,31 @@ class CompteController extends Controller
 
     /**
      * @OA\Patch(
-     *   path="/monteiro.daisa/v1/comptes/{compteId}",
-     *   summary="Mettre à jour un compte",
+     *   path="/api/v1/comptes/{compteId}",
+     *   summary="Mettre à jour les informations d'un compte",
+     *   description="Permet de mettre à jour les informations d'un compte existant.\n\nTous les champs sont optionnels, mais au moins un champ doit être fourni.",
      *   tags={"Comptes"},
      *   security={{"bearerAuth": {}}},
      *   @OA\Parameter(
      *     name="compteId",
      *     in="path",
      *     required=true,
+     *     description="ID unique du compte à mettre à jour",
      *     @OA\Schema(type="string", format="uuid")
      *   ),
      *   @OA\RequestBody(
      *     required=true,
      *     @OA\JsonContent(
      *       type="object",
-     *       @OA\Property(property="statut", type="string", enum={"actif","bloque","ferme"}),
-     *       @OA\Property(property="motifBlocage", type="string", nullable=true),
-     *       @OA\Property(property="metadata", type="object", nullable=true)
+     *       @OA\Property(property="titulaire", type="string", example="Amadou Diallo Junior"),
+     *       @OA\Property(
+     *         property="informationsClient",
+     *         type="object",
+     *         @OA\Property(property="telephone", type="string", example="771234568"),
+     *         @OA\Property(property="email", type="string", example="client@example.com"),
+     *         @OA\Property(property="password", type="string", example="motdepasse"),
+     *         @OA\Property(property="nci", type="string", example="1234567890123")
+     *       )
      *     )
      *   ),
      *   @OA\Response(
@@ -213,16 +236,36 @@ class CompteController extends Controller
      *     @OA\JsonContent(
      *       @OA\Property(property="success", type="boolean", example=true),
      *       @OA\Property(property="message", type="string", example="Compte mis à jour avec succès"),
-     *       @OA\Property(property="data", type="object", ref="#/components/schemas/Compte")
+     *       @OA\Property(
+     *         property="data",
+     *         type="object",
+     *         @OA\Property(property="id", type="string", format="uuid", example="550e8400-e29b-41d4-a716-446655440000"),
+     *         @OA\Property(property="numeroCompte", type="string", example="C00123456"),
+     *         @OA\Property(property="titulaire", type="string", example="Amadou Diallo Junior"),
+     *         @OA\Property(property="type", type="string", example="epargne"),
+     *         @OA\Property(property="solde", type="number", format="float", example=1250000),
+     *         @OA\Property(property="devise", type="string", example="FCFA"),
+     *         @OA\Property(property="dateCreation", type="string", format="date-time", example="2023-03-15T00:00:00Z"),
+     *         @OA\Property(property="statut", type="string", example="actif"),
+     *         @OA\Property(
+     *           property="metadata",
+     *           type="object",
+     *           @OA\Property(property="derniereModification", type="string", format="date-time", example="2025-10-19T11:00:00Z"),
+     *           @OA\Property(property="version", type="integer", example=1)
+     *         )
+     *       )
      *     )
      *   ),
+     *   @OA\Response(response=400, description="Données invalides fournies"),
+     *   @OA\Response(response=401, description="Non autorisé"),
+     *   @OA\Response(response=403, description="Action non autorisée"),
      *   @OA\Response(response=404, description="Compte non trouvé"),
-     *   @OA\Response(response=422, description="Données invalides"),
+     *   @OA\Response(response=422, description="Erreur de validation"),
      *   @OA\Response(response=500, description="Erreur interne du serveur")
      * )
      */
-    // PATCH monteiro.daisa/v1/comptes/{compteId}
-    public function update(Request $request, string $compteId)
+    // PATCH /api/v1/comptes/{compteId}
+    public function update(UpdateCompteRequest $request, string $compteId)
     {
         try {
             $compte = Compte::find($compteId);
@@ -230,43 +273,54 @@ class CompteController extends Controller
                 return $this->errorResponse('Compte non trouvé', 404);
             }
 
-            $validated = $request->validate([
-                'statut' => 'sometimes|in:actif,bloque,ferme',
-                'motifBlocage' => 'required_if:statut,bloque|string|nullable',
-                'metadata' => 'sometimes|array',
-            ]);
+            $validated = $request->validated();
+            $client = $compte->client;
+            $hasUpdates = false;
 
-            // Mise à jour du statut si fourni
-            if (isset($validated['statut'])) {
-                $compte->statut = $validated['statut'];
+            // Mise à jour du titulaire si fourni
+            if (isset($validated['titulaire'])) {
+                $compte->titulaire = $validated['titulaire'];
+                $hasUpdates = true;
+            }
+
+            // Mise à jour des informations du client si fournies
+            if (isset($validated['informationsClient'])) {
+                $infosClient = $validated['informationsClient'];
                 
-                // Si le compte est bloqué, on enregistre le motif
-                if ($validated['statut'] === 'bloque' && isset($validated['motifBlocage'])) {
-                    $metadata = $compte->metadata ?? [];
-                    $metadata['motifBlocage'] = $validated['motifBlocage'];
-                    $compte->metadata = $metadata;
-                } 
-                // Si le compte est réactivé, on supprime le motif de blocage
-                elseif ($validated['statut'] === 'actif') {
-                    $metadata = $compte->metadata ?? [];
-                    unset($metadata['motifBlocage']);
-                    $compte->metadata = $metadata;
+                if (isset($infosClient['telephone'])) {
+                    $client->telephone = $infosClient['telephone'];
+                    $hasUpdates = true;
                 }
-                // Si le compte est fermé, on enregistre la date de fermeture
-                elseif ($validated['statut'] === 'ferme') {
-                    $metadata = $compte->metadata ?? [];
-                    $metadata['dateFermeture'] = now()->toDateTimeString();
-                    $compte->metadata = $metadata;
+                
+                if (isset($infosClient['email'])) {
+                    $client->email = $infosClient['email'];
+                    $hasUpdates = true;
+                }
+                
+                if (isset($infosClient['password']) && !empty($infosClient['password'])) {
+                    $client->password = bcrypt($infosClient['password']);
+                    $hasUpdates = true;
+                }
+                
+                if (isset($infosClient['nci'])) {
+                    $client->nci = $infosClient['nci'];
+                    $hasUpdates = true;
+                }
+                
+                if ($hasUpdates) {
+                    $client->save();
                 }
             }
 
-            // Mise à jour des métadonnées si fournies
-            if (isset($validated['metadata'])) {
-                $currentMetadata = $compte->metadata ?? [];
-                $compte->metadata = array_merge($currentMetadata, $validated['metadata']);
+            // Mise à jour des métadonnées avec la date de dernière modification
+            $metadata = $compte->metadata ?? [];
+            $metadata['derniereModification'] = now()->toDateTimeString();
+            $metadata['version'] = ($metadata['version'] ?? 0) + 1;
+            $compte->metadata = $metadata;
+            
+            if ($hasUpdates) {
+                $compte->save();
             }
-
-            $compte->save();
 
             return $this->successResponse(
                 $this->formatCompteData($compte),
