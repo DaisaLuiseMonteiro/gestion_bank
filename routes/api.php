@@ -20,6 +20,9 @@ Route::prefix('monteiro.daisa/v1')->middleware('logging')->group(function () {
     // Toutes les routes sont accessibles sans authentification
     Route::get('comptes', [CompteController::class, 'index']);
     Route::get('clients/{clientId}/comptes', [CompteController::class, 'byClient']);
+    Route::get('comptes/{numeroCompte}', [CompteController::class, 'show']);
+
+    // Clients
     Route::get('comptes/{compteId}', [CompteController::class, 'show']);
     Route::get('clients', [ClientController::class, 'index']);
     
