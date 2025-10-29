@@ -29,9 +29,9 @@ class ListComptesRequest extends FormRequest
         $validated = $this->validated();
         return [
             'page' => max(1, (int)($validated['page'] ?? 1)),
-            'limit' => min(100, max(1, (int)($validated['limit'] ?? 10))),
+            'limit' => min(100, max(1, (int)($validated['limit'] ?? 5))), // 5 éléments par page par défaut
             'type' => $validated['type'] ?? null,
-            'statut' => $validated['statut'] ?? 'actif',
+            'statut' => 'actif', // Toujours filtrer sur les comptes actifs
             'search' => $validated['search'] ?? null,
             'sort' => in_array(($validated['sort'] ?? ''), ['dateCreation','titulaire']) ? $validated['sort'] : 'dateCreation',
             'order' => (($validated['order'] ?? '') === 'asc') ? 'asc' : 'desc',
