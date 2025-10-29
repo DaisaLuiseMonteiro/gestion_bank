@@ -202,19 +202,6 @@
                         }
                     },
                     {
-                        "name": "statut",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "actif",
-                                "bloque",
-                                "ferme"
-                            ]
-                        }
-                    },
-                    {
                         "name": "search",
                         "in": "query",
                         "required": false,
