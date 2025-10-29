@@ -37,7 +37,6 @@ class CompteFactory extends Factory
 
         return [
             'client_id' => $client->id,
-            // numeroCompte sera généré par le modèle
             'titulaire' => $titulaire,
             'type' => $this->faker->randomElement($types),
             'devise' => 'FCFA',
@@ -106,4 +105,4 @@ class CompteFactory extends Factory
         ]);
     }
     }
-}
+

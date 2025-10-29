@@ -118,25 +118,28 @@ class Compte extends Model
         parent::boot();
 
         static::creating(function ($model) {
-            if (empty($model->{$model->getKeyName()})) {
-                $model->{$model->getKeyName()} = (string) Str::uuid();
+            // Générer un ID unique si nécessaire
+            $keyName = $model->getKeyName();
+            if (empty($model->$keyName)) {
+                $model->$keyName = (string) Str::uuid();
             }
 
-            $model->numeroCompte = self::generateNumeroCompte();
-
+            // Définir la date de création si elle n'est pas définie
             if (empty($model->dateCreation)) {
                 $model->dateCreation = now();
             }
         });
-    }
 
-    private static function generateNumeroCompte(): string
-    {
-        do {
-            $numero = 'C' . str_pad(mt_rand(1, 99999999), 8, '0', STR_PAD_LEFT);
-        } while (self::where('numeroCompte', $numero)->exists());
-
-        return $numero;
+        static::saving(function ($model) {
+            // Si le numéro de compte n'est pas défini, en générer un nouveau
+            if (empty($model->numeroCompte)) {
+                do {
+                    $numero = 'C' . str_pad(mt_rand(1, 99999999), 8, '0', STR_PAD_LEFT);
+                } while (self::where('numeroCompte', $numero)->withTrashed()->exists());
+                
+                $model->numeroCompte = $numero;
+            }
+        });
     }
 
     public function client()

@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use App\Models\User;
 use App\Models\Client;
 use App\Models\Admin;
 use App\Models\Compte;
@@ -19,12 +18,16 @@ class BankSeeder extends Seeder
         // 2 admins
         Admin::factory(2)->create();
 
-        // 10 comptes (1 par client principal par simplicité)
+        // 10 comptes (1 par client)
         $comptes = collect();
+        
         foreach ($clients->take(10) as $client) {
             $comptes->push(Compte::factory()->create([
                 'client_id' => $client->id,
                 'titulaire' => $client->prenom . ' ' . $client->nom,
+                'type' => 'epargne',
+                'statut' => 'actif',
+                'metadata' => ['version' => 1]
             ]));
         }
 
