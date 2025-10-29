@@ -128,35 +128,27 @@ class CompteController extends Controller
 
     /**
      * @OA\Get(
-     *   path="/monteiro.daisa/v1/comptes/{compteId}",
-     *   summary="Récupérer un compte par son ID",
+     *   path="/monteiro.daisa/v1/comptes/{numeroCompte}",
+     *   summary="Afficher un compte par son numéro de compte",
      *   tags={"Comptes"},
      *   @OA\Parameter(
-     *     name="compteId",
+     *     name="numeroCompte",
      *     in="path",
      *     required=true,
-     *     @OA\Schema(type="string", format="uuid")
+     *     description="Numéro de compte à récupérer",
+     *     @OA\Schema(type="string")
      *   ),
-     *   @OA\Response(response=200, description="Compte trouvé"),
-     *   @OA\Response(response=404, description="Compte introuvable")
+     *   @OA\Response(response=200, description="Détails du compte"),
+     *   @OA\Response(response=404, description="Compte non trouvé")
      * )
      */
-    // GET monteiro.daisa/v1/comptes/{compteId}
-    public function show(string $compteId)
+    // GET monteiro.daisa/v1/comptes/{numeroCompte}
+    public function show(string $numeroCompte)
     {
         try {
-            $compte = Compte::find($compteId);
+            $compte = Compte::where('numeroCompte', $numeroCompte)->first();
             if (!$compte) {
-                return response()->json([
-                    'success' => false,
-                    'error' => [
-                        'code' => 'COMPTE_NOT_FOUND',
-                        'message' => "Le compte avec l'ID spécifié n'existe pas",
-                        'details' => [
-                            'compteId' => $compteId,
-                        ],
-                    ],
-                ], 404);
+                return response()->json(['success' => false, 'message' => 'Compte non trouvé'], 404);
             }
 
             $dateCreation = $compte->dateCreation instanceof \Illuminate\Support\Carbon

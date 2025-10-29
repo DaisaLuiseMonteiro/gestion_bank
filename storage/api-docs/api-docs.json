@@ -21,6 +21,25 @@
                 "operationId": "9414da5b156ac395819f7a2221efd353",
                 "parameters": [
                     {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 1
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 10,
+                            "maximum": 100
+                        }
+                    },
+                    {
                         "name": "search",
                         "in": "query",
                         "required": false,
@@ -31,7 +50,51 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Liste des clients"
+                        "description": "Liste paginée des clients",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        },
+                                        "pagination": {
+                                            "properties": {
+                                                "current_page": {
+                                                    "type": "integer"
+                                                },
+                                                "last_page": {
+                                                    "type": "integer"
+                                                },
+                                                "per_page": {
+                                                    "type": "integer"
+                                                },
+                                                "total": {
+                                                    "type": "integer"
+                                                },
+                                                "next_page_url": {
+                                                    "type": "string",
+                                                    "nullable": true
+                                                },
+                                                "prev_page_url": {
+                                                    "type": "string",
+                                                    "nullable": true
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -150,30 +213,30 @@
                 }
             }
         },
-        "/monteiro.daisa/v1/comptes/{compteId}": {
+        "/monteiro.daisa/v1/comptes/{numeroCompte}": {
             "get": {
                 "tags": [
                     "Comptes"
                 ],
-                "summary": "Récupérer un compte par son ID",
-                "operationId": "54dc335c1c0541fe8057b1c4c6b78a81",
+                "summary": "Afficher un compte par son numéro de compte",
+                "operationId": "fd5cff431415054cb0ace072b1a1ec6b",
                 "parameters": [
                     {
-                        "name": "compteId",
+                        "name": "numeroCompte",
                         "in": "path",
+                        "description": "Numéro de compte à récupérer",
                         "required": true,
                         "schema": {
-                            "type": "string",
-                            "format": "uuid"
+                            "type": "string"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Compte trouvé"
+                        "description": "Détails du compte"
                     },
                     "404": {
-                        "description": "Compte introuvable"
+                        "description": "Compte non trouvé"
                     }
                 }
             }
