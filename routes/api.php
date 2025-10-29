@@ -24,6 +24,10 @@ Route::prefix('monteiro.daisa/v1')->middleware('logging')->group(function () {
 
     // Clients
     Route::get('comptes/{compteId}', [CompteController::class, 'show']);
+    Route::get('comptes/{numeroCompte}', [CompteController::class, 'show']);
+
+    // Clients
+
     Route::get('clients', [ClientController::class, 'index']);
     
     // Routes de modification
