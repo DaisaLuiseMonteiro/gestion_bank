@@ -143,35 +143,27 @@ class CompteController extends Controller
 
     /**
      * @OA\Get(
-     *   path="/monteiro.daisa/v1/comptes/{compteId}",
-     *   summary="Récupérer un compte par son ID",
+     *   path="/monteiro.daisa/v1/comptes/{numeroCompte}",
+     *   summary="Afficher un compte par son numéro de compte",
      *   tags={"Comptes"},
      *   @OA\Parameter(
-     *     name="compteId",
+     *     name="numeroCompte",
      *     in="path",
      *     required=true,
-     *     @OA\Schema(type="string", format="uuid")
+     *     description="Numéro de compte à récupérer",
+     *     @OA\Schema(type="string")
      *   ),
-     *   @OA\Response(response=200, description="Compte trouvé"),
-     *   @OA\Response(response=404, description="Compte introuvable")
+     *   @OA\Response(response=200, description="Détails du compte"),
+     *   @OA\Response(response=404, description="Compte non trouvé")
      * )
      */
-    // GET monteiro.daisa/v1/comptes/{compteId}
-    public function show(string $compteId)
+    // GET monteiro.daisa/v1/comptes/{numeroCompte}
+    public function show(string $numeroCompte)
     {
         try {
-            $compte = Compte::find($compteId);
+            $compte = Compte::where('numeroCompte', $numeroCompte)->first();
             if (!$compte) {
-                return response()->json([
-                    'success' => false,
-                    'error' => [
-                        'code' => 'COMPTE_NOT_FOUND',
-                        'message' => "Le compte avec l'ID spécifié n'existe pas",
-                        'details' => [
-                            'compteId' => $compteId,
-                        ],
-                    ],
-                ], 404);
+                return response()->json(['success' => false, 'message' => 'Compte non trouvé'], 404);
             }
 
             $dateCreation = $compte->dateCreation instanceof \Illuminate\Support\Carbon
@@ -206,6 +198,9 @@ class CompteController extends Controller
      *   path="/api/v1/comptes/{compteId}",
      *   summary="Mettre à jour les informations d'un compte",
      *   description="Permet de mettre à jour les informations d'un compte existant.\n\nTous les champs sont optionnels, mais au moins un champ doit être fourni.",
+     *   path="/monteiro.daisa/v1/comptes/{compteId}",
+     *   summary="Mettre à jour un compte (y compris le blocage/déblocage)",
+     *   description="Permet de mettre à jour le statut d'un compte, y compris le blocage et le déblocage.\n\n## Blocage d'un compte\nPour bloquer un compte, définissez `statut` à 'bloque' et fournissez un `motifBlocage`.\n\n## Déblocage d'un compte\nPour débloquer un compte, définissez `statut` à 'actif'. Le `motifBlocage` sera automatiquement supprimé.",
      *   tags={"Comptes"},
      *   security={{"bearerAuth": {}}},
      *   @OA\Parameter(
@@ -213,10 +208,12 @@ class CompteController extends Controller
      *     in="path",
      *     required=true,
      *     description="ID unique du compte à mettre à jour",
+     *     description="ID du compte à mettre à jour",
      *     @OA\Schema(type="string", format="uuid")
      *   ),
      *   @OA\RequestBody(
      *     required=true,
+     *     description="Données de mise à jour du compte",
      *     @OA\JsonContent(
      *       type="object",
      *       @OA\Property(property="titulaire", type="string", example="Amadou Diallo Junior"),
@@ -227,6 +224,24 @@ class CompteController extends Controller
      *         @OA\Property(property="email", type="string", example="client@example.com"),
      *         @OA\Property(property="password", type="string", example="motdepasse"),
      *         @OA\Property(property="nci", type="string", example="1234567890123")
+     *       required={"statut"},
+     *       @OA\Property(
+     *         property="statut", 
+     *         type="string", 
+     *         enum={"actif","bloque","ferme"},
+     *         description="Nouveau statut du compte. 'bloque' pour bloquer, 'actif' pour débloquer"
+     *       ),
+     *       @OA\Property(
+     *         property="motifBlocage", 
+     *         type="string", 
+     *         nullable=true,
+     *         description="Obligatoire si statut='bloque'. Raison du blocage du compte"
+     *       ),
+     *       @OA\Property(
+     *         property="metadata", 
+     *         type="object", 
+     *         nullable=true,
+     *         description="Métadonnées supplémentaires du compte"
      *       )
      *     )
      *   ),
@@ -262,6 +277,38 @@ class CompteController extends Controller
      *   @OA\Response(response=404, description="Compte non trouvé"),
      *   @OA\Response(response=422, description="Erreur de validation"),
      *   @OA\Response(response=500, description="Erreur interne du serveur")
+     *   @OA\Response(
+     *     response=400,
+     *     description="Requête invalide",
+     *     @OA\JsonContent(
+     *       @OA\Property(property="success", type="boolean", example=false),
+     *       @OA\Property(property="message", type="string", example="Le motif de blocage est requis")
+     *     )
+     *   ),
+     *   @OA\Response(
+     *     response=404,
+     *     description="Compte non trouvé",
+     *     @OA\JsonContent(
+     *       @OA\Property(property="success", type="boolean", example=false),
+     *       @OA\Property(property="message", type="string", example="Compte non trouvé")
+     *     )
+     *   ),
+     *   @OA\Response(
+     *     response=422,
+     *     description="Données invalides",
+     *     @OA\JsonContent(
+     *       @OA\Property(property="message", type="string", example="The given data was invalid."),
+     *       @OA\Property(property="errors", type="object")
+     *     )
+     *   ),
+     *   @OA\Response(
+     *     response=500,
+     *     description="Erreur interne du serveur",
+     *     @OA\JsonContent(
+     *       @OA\Property(property="success", type="boolean", example=false),
+     *       @OA\Property(property="message", type="string", example="Erreur lors de la mise à jour du compte")
+     *     )
+     *   )
      * )
      */
     // PATCH /api/v1/comptes/{compteId}

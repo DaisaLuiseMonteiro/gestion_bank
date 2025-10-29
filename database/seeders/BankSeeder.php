@@ -19,13 +19,16 @@ class BankSeeder extends Seeder
         // 2 admins
         Admin::factory(2)->create();
 
-        // 10 comptes (1 par client principal par simplicité)
+        // 20 comptes actifs (2 par client)
         $comptes = collect();
-        foreach ($clients->take(10) as $client) {
-            $comptes->push(Compte::factory()->create([
-                'client_id' => $client->id,
-                'titulaire' => $client->prenom . ' ' . $client->nom,
-            ]));
+        foreach ($clients as $client) {
+            for ($i = 0; $i < 2; $i++) {
+                $comptes->push(Compte::factory()->create([
+                    'client_id' => $client->id,
+                    'titulaire' => $client->prenom . ' ' . $client->nom,
+                    'type' => $i % 2 === 0 ? 'epargne' : 'cheque', // Un compte épargne et un compte chèque par client
+                ]));
+            }
         }
 
         // 20 transactions (1 dépôt + 1 retrait par compte)
