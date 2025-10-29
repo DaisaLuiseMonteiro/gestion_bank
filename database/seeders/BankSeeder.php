@@ -12,13 +12,13 @@ class BankSeeder extends Seeder
 {
     public function run(): void
     {
-        // 10 clients
-        $clients = Client::factory(10)->create();
+        // 15 clients (10 + 5 pour les comptes chèques)
+        $clients = Client::factory(15)->create();
 
         // 2 admins
         Admin::factory(2)->create();
 
-        // 10 comptes (1 par client)
+        // 10 comptes épargne (1 par client)
         $comptes = collect();
         
         foreach ($clients->take(10) as $client) {
@@ -26,6 +26,17 @@ class BankSeeder extends Seeder
                 'client_id' => $client->id,
                 'titulaire' => $client->prenom . ' ' . $client->nom,
                 'type' => 'epargne',
+                'statut' => 'actif',
+                'metadata' => ['version' => 1]
+            ]));
+        }
+
+        // 5 comptes chèques avec statut actif
+        foreach ($clients->slice(10, 5) as $client) {
+            $comptes->push(Compte::factory()->create([
+                'client_id' => $client->id,
+                'titulaire' => $client->prenom . ' ' . $client->nom,
+                'type' => 'cheque',
                 'statut' => 'actif',
                 'metadata' => ['version' => 1]
             ]));
