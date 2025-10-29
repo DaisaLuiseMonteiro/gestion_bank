@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Compte;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Log;
 
 class CompteService
 {
@@ -11,14 +12,19 @@ class CompteService
     {
         $query = Compte::query();
 
+        // Filtrage par type
         if (!empty($filters['type'])) {
             $query->where('type', $filters['type']);
         }
+        
+        // Filtrage par statut
         if (!empty($filters['statut'])) {
             $query->where('statut', $filters['statut']);
         } else {
-            $query->where('statut', 'actif'); // Par défaut, on ne montre que les comptes actifs
+            $query->where('statut', 'actif');
         }
+        
+        // Recherche
         if (!empty($filters['search'])) {
             $s = $filters['search'];
             $query->where(function ($qq) use ($s) {
@@ -27,13 +33,21 @@ class CompteService
             });
         }
 
+        // Tri
         $sort = $filters['sort'] ?? 'created_at';
         $order = $filters['order'] ?? 'desc';
         $query->orderBy($sort, $order);
 
-        // Par défaut, on affiche 5 comptes par page
+        // Pagination
         $perPage = $filters['limit'] ?? 5;
         $page = $filters['page'] ?? 1;
+        
+        // Log de débogage
+        Log::info('Requête de filtrage des comptes', [
+            'filtres' => $filters,
+            'requete_sql' => $query->toSql(),
+            'parametres' => $query->getBindings()
+        ]);
         
         return $query->paginate($perPage, ['*'], 'page', $page);
     }
