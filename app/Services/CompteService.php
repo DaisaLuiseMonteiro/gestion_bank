@@ -16,6 +16,8 @@ class CompteService
         }
         if (!empty($filters['statut'])) {
             $query->where('statut', $filters['statut']);
+        } else {
+            $query->where('statut', 'actif'); // Par défaut, on ne montre que les comptes actifs
         }
         if (!empty($filters['search'])) {
             $s = $filters['search'];
@@ -25,8 +27,14 @@ class CompteService
             });
         }
 
-        $query->orderBy($filters['sort'], $filters['order']);
+        $sort = $filters['sort'] ?? 'created_at';
+        $order = $filters['order'] ?? 'desc';
+        $query->orderBy($sort, $order);
 
-        return $query->paginate($filters['limit'], ['*'], 'page', $filters['page']);
+        // Par défaut, on affiche 5 comptes par page
+        $perPage = $filters['limit'] ?? 5;
+        $page = $filters['page'] ?? 1;
+        
+        return $query->paginate($perPage, ['*'], 'page', $page);
     }
 }

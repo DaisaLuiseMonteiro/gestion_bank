@@ -82,6 +82,54 @@ class CompteController extends Controller
 
     /**
      * @OA\Get(
+     *   path="/monteiro.daisa/v1/comptes/numero/{numeroCompte}",
+     *   summary="Récupérer un compte par son numéro",
+     *   tags={"Comptes"},
+     *   @OA\Parameter(
+     *     name="numeroCompte",
+     *     in="path",
+     *     required=true,
+     *     description="Numéro de compte à rechercher",
+     *     @OA\Schema(type="string")
+     *   ),
+     *   @OA\Response(
+     *     response=200,
+     *     description="Détails du compte",
+     *     @OA\JsonContent(ref="#/components/schemas/Compte")
+     *   ),
+     *   @OA\Response(
+     *     response=404,
+     *     description="Compte non trouvé"
+     *   )
+     * )
+     */
+    // GET monteiro.daisa/v1/comptes/numero/{numeroCompte}
+    public function showByNumero(string $numeroCompte)
+    {
+        try {
+            $compte = Compte::where('numeroCompte', $numeroCompte)->firstOrFail();
+            
+            return response()->json([
+                'success' => true,
+                'data' => $this->formatCompteData($compte)
+            ]);
+            
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Aucun compte trouvé avec ce numéro.'
+            ], 404);
+        } catch (\Exception $e) {
+            Log::error('Erreur lors de la récupération du compte: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Une erreur est survenue lors de la récupération du compte.'
+            ], 500);
+        }
+    }
+
+    /**
+     * @OA\Get(
      *   path="/monteiro.daisa/v1/clients/{clientId}/comptes",
      *   summary="Lister les comptes d'un client (création si aucun)",
      *   tags={"Comptes"},

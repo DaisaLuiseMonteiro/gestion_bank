@@ -254,6 +254,41 @@
                 }
             }
         },
+        "/monteiro.daisa/v1/comptes/numero/{numeroCompte}": {
+            "get": {
+                "tags": [
+                    "Comptes"
+                ],
+                "summary": "Récupérer un compte par son numéro",
+                "operationId": "54701d71d8ede3642b8ffb4726570e79",
+                "parameters": [
+                    {
+                        "name": "numeroCompte",
+                        "in": "path",
+                        "description": "Numéro de compte à rechercher",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Détails du compte",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Compte"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Compte non trouvé"
+                    }
+                }
+            }
+        },
         "/monteiro.daisa/v1/clients/{clientId}/comptes": {
             "get": {
                 "tags": [
