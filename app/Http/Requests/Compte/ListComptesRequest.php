@@ -16,9 +16,8 @@ class ListComptesRequest extends FormRequest
         return [
             'page' => ['sometimes','integer','min:1'],
             'limit' => ['sometimes','integer','min:1','max:100'],
-            'type' => ['sometimes','in:cheque,epargne'],
-            'statut' => ['sometimes','in:actif,bloque,ferme'],
-            'search' => ['sometimes','string','nullable'],
+            'type' => ['sometimes','string','in:courant,epargne'],
+            'search' => ['sometimes','string','max:100'],
             'sort' => ['sometimes','in:dateCreation,titulaire'],
             'order' => ['sometimes','in:asc,desc'],
         ];
@@ -31,7 +30,6 @@ class ListComptesRequest extends FormRequest
             'page' => max(1, (int)($validated['page'] ?? 1)),
             'limit' => min(100, max(1, (int)($validated['limit'] ?? 5))),
             'type' => $validated['type'] ?? null,
-            'statut' => $validated['statut'] ?? 'actif',
             'search' => $validated['search'] ?? null,
             'sort' => in_array(($validated['sort'] ?? ''), ['dateCreation','titulaire']) ? $validated['sort'] : 'dateCreation',
             'order' => (($validated['order'] ?? '') === 'asc') ? 'asc' : 'desc',
