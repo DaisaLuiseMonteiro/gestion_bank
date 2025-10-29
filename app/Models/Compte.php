@@ -87,12 +87,10 @@ class Compte extends Model
 {
     use HasFactory, SoftDeletes;
 
-    // UUID comme clé primaire
     public $incrementing = false;
     protected $keyType = 'string';
 
     protected $fillable = [
-        // 'numeroCompte' est généré automatiquement et ne doit pas être rempli manuellement
         'titulaire',
         'type',
         'devise',
@@ -102,12 +100,9 @@ class Compte extends Model
         'client_id',
     ];
 
-    /**
-     * Empêche la modification directe du numéro de compte
-     */
+   
     public function setNumeroCompteAttribute($value)
     {
-        // Ne rien faire, la valeur sera définie par generateNumeroCompte()
     }
 
     protected $casts = [
@@ -127,7 +122,6 @@ class Compte extends Model
                 $model->{$model->getKeyName()} = (string) Str::uuid();
             }
 
-            // Toujours générer un nouveau numéro de compte
             $model->numeroCompte = self::generateNumeroCompte();
 
             if (empty($model->dateCreation)) {
@@ -136,9 +130,6 @@ class Compte extends Model
         });
     }
 
-    /**
-     * Générer un numéro de compte unique
-     */
     private static function generateNumeroCompte(): string
     {
         do {

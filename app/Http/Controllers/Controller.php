@@ -18,8 +18,24 @@ use OpenApi\Annotations as OA;
  *     url="/",
  *     description="Serveur local"
  * )
+ *
+ * @OA\SecurityScheme(
+ *     type="http",
+ *     scheme="bearer",
+ *     securityScheme="bearerAuth",
+ *     bearerFormat="JWT"
+ * )
+ *
+ * @OA\Tag(
+ *     name="Comptes",
+ *     description="Opérations sur les comptes bancaires"
+ * )
+ * 
+ * @OA\Tag(
+ *     name="Clients",
+ *     description="Gestion des clients"
+ * )
  */
-
 class Controller extends BaseController
 {
     use AuthorizesRequests, ValidatesRequests;
