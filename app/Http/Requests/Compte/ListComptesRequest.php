@@ -29,7 +29,7 @@ class ListComptesRequest extends FormRequest
         $validated = $this->validated();
         return [
             'page' => max(1, (int)($validated['page'] ?? 1)),
-            'limit' => min(100, max(1, (int)($validated['limit'] ?? 10))),
+            'limit' => min(100, max(1, (int)($validated['limit'] ?? 5))),
             'type' => $validated['type'] ?? null,
             'statut' => $validated['statut'] ?? 'actif',
             'search' => $validated['search'] ?? null,
