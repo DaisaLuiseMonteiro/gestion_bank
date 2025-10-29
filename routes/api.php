@@ -19,9 +19,8 @@ Route::prefix('monteiro.daisa/v1')->middleware('logging')->group(function () {
     // Comptes
     Route::get('comptes', [CompteController::class, 'index']);
     Route::get('clients/{clientId}/comptes', [CompteController::class, 'byClient']);
-    Route::get('comptes/{compteId}', [CompteController::class, 'show']);
-    Route::patch('comptes/{compteId}', [CompteController::class, 'update']);
-
+    Route::get('comptes/{numeroCompte}', [CompteController::class, 'show']);
+    Route::delete('comptes/{numeroCompte}', [CompteController::class, 'destroy']);
 
     // Clients
     Route::get('clients', [ClientController::class, 'index']);
