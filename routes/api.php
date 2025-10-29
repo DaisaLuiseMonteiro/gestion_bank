@@ -27,5 +27,4 @@ Route::prefix('monteiro.daisa/v1')->middleware('logging')->group(function () {
     // Routes de modification
     Route::patch('comptes/{compteId}', [CompteController::class, 'update']);
     Route::post('comptes/{compteId}/bloquer', [CompteBloqueController::class, 'bloquer']);
-    Route::post('comptes/{compteId}/debloquer', [CompteBloqueController::class, 'debloquer']);
 });

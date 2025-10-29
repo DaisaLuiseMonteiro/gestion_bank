@@ -80,64 +80,6 @@ class CompteBloqueController extends Controller
         ]);
     }
 
-    /**
-     * @OA\Post(
-     *     path="/monteiro.daisa/v1/comptes/{compteId}/debloquer",
-     *     summary="Débloquer un compte épargne",
-     *     tags={"Comptes"},
-     *     security={{"bearerAuth": {}}},
-     *     @OA\Parameter(
-     *         name="compteId",
-     *         in="path",
-     *         required=true,
-     *         description="ID du compte à débloquer",
-     *         @OA\Schema(type="string", format="uuid")
-     *     ),
-     *     @OA\Response(
-     *         response=200,
-     *         description="Compte débloqué avec succès",
-     *         @OA\JsonContent(ref="#/components/schemas/CompteDebloque")
-     *     ),
-     *     @OA\Response(response=400, description="Requête invalide"),
-     *     @OA\Response(response=401, description="Non autorisé"),
-     *     @OA\Response(response=404, description="Compte non trouvé")
-     * )
-     */
-    public function debloquer($compteId): JsonResponse
-    {
-        $compte = Compte::findOrFail($compteId);
-        
-        if ($compte->statut !== 'bloque') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Le compte doit être bloqué pour être débloqué'
-            ], 400);
-        }
-
-        $metadata = $compte->metadata ?? [];
-        $metadata['dateDeblocage'] = now();
-        unset($metadata['motifBlocage']);
-        unset($metadata['dateDebutBlocage']);
-        unset($metadata['dateFinBlocage']);
-        unset($metadata['dureeBlocage']);
-        unset($metadata['uniteDuree']);
-
-        $compte->update([
-            'statut' => 'actif',
-            'metadata' => $metadata
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Compte débloqué avec succès',
-            'data' => [
-                'id' => $compte->id,
-                'statut' => 'actif',
-                'dateDeblocage' => now()->toIso8601String()
-            ]
-        ]);
-    }
-
     private function calculerDateFin(Carbon $dateDebut, int $duree, string $unite): Carbon
     {
         return match($unite) {
