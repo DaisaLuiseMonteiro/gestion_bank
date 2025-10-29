@@ -27,6 +27,7 @@ Route::prefix('monteiro.daisa/v1')->middleware('logging')->group(function () {
 
     // Clients
 
+    Route::get('comptes/{compteId}', [CompteController::class, 'show']);
     Route::get('clients', [ClientController::class, 'index']);
     
     // Routes de modification
@@ -34,3 +35,15 @@ Route::prefix('monteiro.daisa/v1')->middleware('logging')->group(function () {
     Route::post('comptes/{compteId}/bloquer', [CompteBloqueController::class, 'bloquer']);
     Route::post('comptes/{compteId}/debloquer', [CompteBloqueController::class, 'debloquer']);
 });
+-Laptop-14-ep0xxx:~/gestion_bank$ git status
+Sur la branche production
+Vous avez des chemins non fusionnés.
+  (réglez les conflits puis lancez "git commit")
+  (utilisez "git merge --abort" pour annuler la fusion)
+
+Chemins non fusionnés :
+  (utilisez "git add <fichier>..." pour marquer comme résolu)
+        modifié des deux côtés :  routes/api.php
+
+aucune modification n'a été ajoutée à la validation (utilisez "git add" ou "git commit -a")
+daisa-luise-monteiro@daisa-luise-monteiro-HP-Laptop-14-ep0xxx:~/gestion_bank$ 
