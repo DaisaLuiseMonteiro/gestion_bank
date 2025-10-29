@@ -23,6 +23,7 @@ Route::prefix('monteiro.daisa/v1')->middleware('logging')->group(function () {
 
     Route::get('comptes/{compteId}', [CompteController::class, 'show']);
     Route::get('comptes/{numeroCompte}', [CompteController::class, 'show']);
+    Route::delete('comptes/{numeroCompte}', [CompteController::class, 'destroy']);
 
     // Clients
 
