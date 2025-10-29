@@ -14,7 +14,7 @@ class LoggingMiddleware
 
         $method = strtoupper($request->getMethod());
         $path = $request->path();
-        $isTarget = preg_match('#^api/monteiro\.daisa/v1/comptes(/.*)?$#', $path) === 1;
+        $isTarget = preg_match('#^api/monteiro\.daisa/v1/comptes(/\d+)?$#', $path) === 1;
 
         if ($isTarget && in_array($method, ['POST','PUT','PATCH','DELETE'])) {
             $operation = match ($method) {
