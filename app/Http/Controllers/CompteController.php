@@ -274,114 +274,302 @@ class CompteController extends Controller
     {
         try {
             $compte = Compte::find($compteId);
-            if (!$compte) {
-                return $this->errorResponse('Compte non trouvé', 404);
-            }
 
-            $validated = $request->validate([
-                'statut' => 'sometimes|in:actif,bloque,ferme',
-                'motifBlocage' => 'required_if:statut,bloque|string|nullable',
-                'metadata' => 'sometimes|array',
-            ]);
-
-            // Mise à jour du statut si fourni
-            if (isset($validated['statut'])) {
-                $compte->statut = $validated['statut'];
-                
-                // Si le compte est bloqué, on enregistre le motif
-                if ($validated['statut'] === 'bloque' && isset($validated['motifBlocage'])) {
-                    $metadata = $compte->metadata ?? [];
-                    $metadata['motifBlocage'] = $validated['motifBlocage'];
-                    $compte->metadata = $metadata;
-                } 
-                // Si le compte est réactivé, on supprime le motif de blocage
-                elseif ($validated['statut'] === 'actif') {
-                    $metadata = $compte->metadata ?? [];
-                    unset($metadata['motifBlocage']);
-                    $compte->metadata = $metadata;
-                }
-                // Si le compte est fermé, on enregistre la date de fermeture
-                elseif ($validated['statut'] === 'ferme') {
-                    $metadata = $compte->metadata ?? [];
-                    $metadata['dateFermeture'] = now()->toDateTimeString();
-                    $compte->metadata = $metadata;
-                }
-            }
-
-            // Mise à jour des métadonnées si fournies
-            if (isset($validated['metadata'])) {
-                $currentMetadata = $compte->metadata ?? [];
-                $compte->metadata = array_merge($currentMetadata, $validated['metadata']);
-            }
-
-            $compte->save();
-
-            return $this->successResponse(
-                $this->formatCompteData($compte),
-                'Compte mis à jour avec succès'
-            );
-
-        } catch (\Illuminate\Validation\ValidationException $e) {
+/**
+ * @OA\Get(
+ *   path="/monteiro.daisa/v1/comptes/{compteId}",
+ *   summary="Récupérer un compte par son ID",
+ *   tags={"Comptes"},
+ *   @OA\Parameter(
+ *     name="compteId",
+ *     in="path",
+ *     required=true,
+ *     @OA\Schema(type="string", format="uuid")
+ *   ),
+ *   @OA\Response(response=200, description="Compte trouvé"),
+ *   @OA\Response(response=404, description="Compte introuvable")
+ * )
+ */
+// GET monteiro.daisa/v1/comptes/{compteId}
+public function show(string $compteId)
+{
+    try {
+        $compte = Compte::find($compteId);
+        if (!$compte) {
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur de validation',
-                'errors' => $e->errors(),
-            ], 422);
-        } catch (\Throwable $e) {
-            Log::error('Comptes.update error: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
-            return $this->errorResponse('Erreur lors de la mise à jour du compte', 500);
-        }
-    }
-
-    // GET monteiro.daisa/v1/comptes/{clientId}
-    public function showByClient(string $clientId)
-    {
-        try {
-            $compte = Compte::where('client_id', $clientId)->first();
-            if (!$compte) {
-                return response()->json([
-                    'success' => false,
-                    'error' => [
-                        'code' => 'COMPTE_NOT_FOUND',
-                        'message' => "Le compte avec l'ID spécifié n'existe pas",
-                        'details' => [
-                            'compteId' => $clientId,
-                        ],
+                'error' => [
+                    'code' => 'COMPTE_NOT_FOUND',
+                    'message' => "Le compte avec l'ID spécifié n'existe pas",
+                    'details' => [
+                        'compteId' => $compteId,
                     ],
-                ], 404);
+                ],
+            ], 404);
+        }
+
+        $dateCreation = $compte->dateCreation instanceof \Illuminate\Support\Carbon
+            ? $compte->dateCreation->toISOString()
+            : (string) $compte->dateCreation;
+
+        $data = [
+            'id' => $compte->id,
+            'numeroCompte' => $compte->numeroCompte,
+            'titulaire' => $compte->titulaire,
+            'type' => $compte->type,
+            'solde' => $compte->getSolde(),
+            'devise' => $compte->devise,
+            'dateCreation' => $dateCreation,
+            'statut' => $compte->statut,
+            'motifBlocage' => data_get($compte->metadata, 'motifBlocage'),
+            'metadata' => $compte->metadata,
+        ];
+
+        return response()->json([
+            'success' => true,
+            'data' => $data,
+        ]);
+    } catch (\Throwable $e) {
+        Log::error('Comptes.show error: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
+        return response()->json(['success' => false, 'message' => 'Erreur interne'], 500);
+    }
+}
+
+/**
+ * @OA\Patch(
+ *   path="/monteiro.daisa/v1/comptes/{compteId}",
+ *   summary="Mettre à jour un compte (y compris le blocage/déblocage)",
+ *   description="Permet de mettre à jour le statut d'un compte, y compris le blocage et le déblocage.\n\n## Blocage d'un compte\nPour bloquer un compte, définissez `statut` à 'bloque' et fournissez un `motifBlocage`.\n\n## Déblocage d'un compte\nPour débloquer un compte, définissez `statut` à 'actif'. Le `motifBlocage` sera automatiquement supprimé.",
+ *   tags={"Comptes"},
+ *   security={{"bearerAuth": {}}},
+ *   @OA\Parameter(
+ *     name="compteId",
+ *     in="path",
+ *     required=true,
+ *     description="ID du compte à mettre à jour",
+ *     @OA\Schema(type="string", format="uuid")
+ *   ),
+ *   @OA\RequestBody(
+ *     required=true,
+ *     description="Données de mise à jour du compte",
+ *     @OA\JsonContent(
+ *       type="object",
+ *       required={"statut"},
+ *       @OA\Property(
+ *         property="statut", 
+ *         type="string", 
+ *         enum={"actif","bloque","ferme"},
+ *         description="Nouveau statut du compte. 'bloque' pour bloquer, 'actif' pour débloquer"
+ *       ),
+ *       @OA\Property(
+ *         property="motifBlocage", 
+ *         type="string", 
+ *         nullable=true,
+ *         description="Obligatoire si statut='bloque'. Raison du blocage du compte"
+ *       ),
+ *       @OA\Property(
+ *         property="metadata", 
+ *         type="object", 
+ *         nullable=true,
+ *         description="Métadonnées supplémentaires du compte"
+ *       )
+ *     )
+ *   ),
+ *   @OA\Response(
+ *     response=200,
+ *     description="Compte mis à jour avec succès",
+ *     @OA\JsonContent(
+ *       @OA\Property(property="success", type="boolean", example=true),
+ *       @OA\Property(property="message", type="string", example="Compte mis à jour avec succès"),
+ *       @OA\Property(property="data", type="object", ref="#/components/schemas/Compte")
+ *     )
+ *   ),
+ *   @OA\Response(
+ *     response=400,
+ *     description="Requête invalide",
+ *     @OA\JsonContent(
+ *       @OA\Property(property="success", type="boolean", example=false),
+ *       @OA\Property(property="message", type="string", example="Le motif de blocage est requis")
+ *     )
+ *   ),
+ *   @OA\Response(
+ *     response=404,
+ *     description="Compte non trouvé",
+ *     @OA\JsonContent(
+ *       @OA\Property(property="success", type="boolean", example=false),
+ *       @OA\Property(property="message", type="string", example="Compte non trouvé")
+ *     )
+ *   ),
+ *   @OA\Response(
+ *     response=422,
+ *     description="Données invalides",
+ *     @OA\JsonContent(
+ *       @OA\Property(property="message", type="string", example="The given data was invalid."),
+ *       @OA\Property(property="errors", type="object")
+ *     )
+ *   ),
+ *   @OA\Response(
+ *     response=500,
+ *     description="Erreur interne du serveur",
+ *     @OA\JsonContent(
+ *       @OA\Property(property="success", type="boolean", example=false),
+ * )
+ */
+// PATCH monteiro.daisa/v1/comptes/{compteId}
+public function update(Request $request, string $compteId)
+{
+    try {
+        $compte = Compte::find($compteId);
+        if (!$compte) {
+            return $this->errorResponse('Compte non trouvé', 404);
+        }
+
+        $validated = $request->validate([
+            'titulaire' => 'sometimes|string|max:255',
+            'type' => 'sometimes|in:cheque,epargne',
+            'devise' => 'sometimes|string|max:10',
+            'dateCreation' => 'sometimes|date',
+            'client_id' => 'sometimes|string|uuid|exists:clients,id',
+            'metadata' => 'sometimes|array',
+            'motifBlocage' => 'sometimes|string|nullable',
+        ]);
+
+        // Liste des champs autorisés à être modifiés
+        $updatableFields = [
+            'titulaire', 'type', 'devise', 'dateCreation', 'client_id', 'metadata'
+        ];
+
+        // Mise à jour des champs autorisés
+        foreach ($updatableFields as $field) {
+            if (array_key_exists($field, $validated)) {
+                $compte->$field = $validated[$field];
             }
+        }
 
-            $dateCreation = $compte->dateCreation instanceof \Illuminate\Support\Carbon
-                ? $compte->dateCreation->toISOString()
-                : (string) $compte->dateCreation;
+        // Gestion spécifique des métadonnées
+        if (isset($validated['metadata'])) {
+            $compte->metadata = array_merge(
+                $compte->metadata ?? [],
+                $validated['metadata']
+            );
+        }
 
-            $data = [
+        // Gestion du motif de blocage
+        if (isset($validated['motifBlocage'])) {
+            $metadata = $compte->metadata ?? [];
+            if (!empty($validated['motifBlocage'])) {
+                $metadata['motifBlocage'] = $validated['motifBlocage'];
+            } else {
+                unset($metadata['motifBlocage']);
+            }
+            $compte->metadata = $metadata;
+        }
+
+        $compte->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Compte mis à jour avec succès',
+            'data' => $this->formatCompteData($compte)
+        ]);
+
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Erreur de validation',
+            'errors' => $e->errors()
+        ], 422);
+    } catch (\Exception $e) {
+        Log::error('Erreur lors de la mise à jour du compte: ' . $e->getMessage(), [
+            'trace' => $e->getTraceAsString(),
+            'compteId' => $compteId
+        ]);
+        return $this->errorResponse('Erreur lors de la mise à jour du compte: ' . $e->getMessage(), 500);
+    }
+}
+
+/**
+ * @OA\Delete(
+ *   path="/monteiro.daisa/v1/comptes/{compteId}",
+ *   summary="Supprimer un compte (soft delete)",
+ *   tags={"Comptes"},
+ *   security={{"bearerAuth": {}}},
+ *   @OA\Parameter(
+ *     name="compteId",
+ *     in="path",
+ *     required=true,
+ *     @OA\Schema(type="string", format="uuid")
+ *   ),
+ *   @OA\Response(
+ *     response=200,
+ *     description="Compte marqué comme supprimé avec succès",
+ *     @OA\JsonContent(
+ *       @OA\Property(property="success", type="boolean", example=true),
+ *       @OA\Property(property="message", type="string", example="Compte supprimé avec succès"),
+ *       @OA\Property(
+ *         property="data",
+ *         type="object",
+ *         @OA\Property(property="id", type="string", format="uuid", example="550e8400-e29b-41d4-a716-446655440000"),
+ *         @OA\Property(property="numeroCompte", type="string", example="C00123456"),
+ *         @OA\Property(property="statut", type="string", enum={"actif","bloque","ferme"}, example="ferme"),
+ *         @OA\Property(property="dateFermeture", type="string", format="date-time", example="2025-10-19T11:15:00Z")
+ *       )
+ *     )
+ *   ),
+ *   @OA\Response(response=404, description="Compte non trouvé"),
+ *   @OA\Response(response=500, description="Erreur interne du serveur")
+ * )
+ */
+// DELETE monteiro.daisa/v1/comptes/{compteId}
+public function destroy(string $compteId)
+{
+    try {
+        $compte = Compte::find($compteId);
+        
+        if (!$compte) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Compte non trouvé',
+                'errors' => [
+                    'message' => 'Aucun compte trouvé avec cet ID',
+                    'details' => [
+                        'compteId' => $compteId,
+                    ],
+                ],
+            ], 404);
+        }
+
+        // Mise à jour du statut et de la date de fermeture avant la suppression
+        $compte->update([
+            'statut' => 'ferme',
+            'dateFermeture' => now()
+        ]);
+
+        // Suppression logique
+        $compte->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Compte supprimé avec succès',
+            'data' => [
                 'id' => $compte->id,
                 'numeroCompte' => $compte->numeroCompte,
-                'titulaire' => $compte->titulaire,
-                'type' => $compte->type,
-                'solde' => $compte->getSolde(),
-                'devise' => $compte->devise,
-                'dateCreation' => $dateCreation,
                 'statut' => $compte->statut,
-                'motifBlocage' => data_get($compte->metadata, 'motifBlocage'),
-                'metadata' => $compte->metadata,
-            ];
+                'dateFermeture' => $compte->dateFermeture ? $compte->dateFermeture->toIso8601String() : null,
+            ]
+        ]);
 
-            return response()->json([
-                'success' => true,
-                'data' => $data,
-            ]);
-        } catch (\Throwable $e) {
-            Log::error('Comptes.showByClient error: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
-            return response()->json(['success' => false, 'message' => 'Erreur interne'], 500);
-        }
+    } catch (\Throwable $e) {
+        Log::error('Erreur lors de la suppression du compte: ' . $e->getMessage(), [
+            'trace' => $e->getTraceAsString(),
+            'compteId' => $compteId
+        ]);
+        return response()->json([
+            'success' => false,
+            'message' => 'Erreur lors de la suppression du compte',
+            'error' => config('app.debug') ? $e->getMessage() : 'Erreur interne du serveur'
+        ], 500);
     }
-
-    /**
-     * @OA\Delete(
-     *   path="/monteiro.daisa/v1/comptes/{compteId}",
-     *   summary="Supprimer un compte (soft delete)",
      *   tags={"Comptes"},
      *   security={{"bearerAuth": {}}},
      *   @OA\Parameter(
