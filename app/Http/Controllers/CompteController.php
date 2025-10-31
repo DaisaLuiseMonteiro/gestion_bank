@@ -152,7 +152,6 @@ class CompteController extends Controller
 
             $comptes = $client->comptes()->get();
 
-            // Si aucun compte, en créer un par défaut selon la règle exprimée
             if ($comptes->isEmpty()) {
                 $compte = Compte::create([
                     'client_id' => $client->id,
@@ -331,23 +330,19 @@ class CompteController extends Controller
                 'metadata' => 'sometimes|array',
             ]);
 
-            // Mise à jour du statut si fourni
             if (isset($validated['statut'])) {
                 $compte->statut = $validated['statut'];
                 
-                // Si le compte est bloqué, on enregistre le motif
                 if ($validated['statut'] === 'bloque' && isset($validated['motifBlocage'])) {
                     $metadata = $compte->metadata ?? [];
                     $metadata['motifBlocage'] = $validated['motifBlocage'];
                     $compte->metadata = $metadata;
                 } 
-                // Si le compte est réactivé, on supprime le motif de blocage
                 elseif ($validated['statut'] === 'actif') {
                     $metadata = $compte->metadata ?? [];
                     unset($metadata['motifBlocage']);
                     $compte->metadata = $metadata;
                 }
-                // Si le compte est fermé, on enregistre la date de fermeture
                 elseif ($validated['statut'] === 'ferme') {
                     $metadata = $compte->metadata ?? [];
                     $metadata['dateFermeture'] = now()->toDateTimeString();
@@ -355,7 +350,6 @@ class CompteController extends Controller
                 }
             }
 
-            // Mise à jour des métadonnées si fournies
             if (isset($validated['metadata'])) {
                 $currentMetadata = $compte->metadata ?? [];
                 $compte->metadata = array_merge($currentMetadata, $validated['metadata']);
@@ -380,7 +374,6 @@ class CompteController extends Controller
         }
     }
 
-    // GET monteiro.daisa/v1/comptes/{clientId}
     public function showByClient(string $clientId)
     {
         try {
@@ -476,13 +469,11 @@ class CompteController extends Controller
                 ], 404);
             }
 
-            // Mise à jour du statut et de la date de fermeture avant la suppression
             $compte->update([
                 'statut' => 'ferme',
                 'dateFermeture' => now()
             ]);
 
-            // Suppression logique
             $compte->delete();
 
             return response()->json([

@@ -33,7 +33,7 @@ class ClientController extends Controller
                    ->orWhere('cni','like',"%$s%");
             });
         });
-
+  
         $clients = $query->limit(100)->get();
 
         $data = $clients->map(function($c){

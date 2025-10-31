@@ -14,7 +14,10 @@ class CompteService
 
         // Filtrage par type
         if (!empty($filters['type'])) {
-            $query->where('type', $filters['type']);
+            $type = strtolower($filters['type']);
+            if (in_array($type, ['cheque', 'epargne'])) {
+                $query->where('type', $type);
+            }
         }
         
         // Filtrage par statut
