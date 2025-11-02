@@ -22,7 +22,6 @@ class CompteController extends Controller
      *   @OA\Parameter(name="page", in="query", required=false, @OA\Schema(type="integer")),
      *   @OA\Parameter(name="limit", in="query", required=false, @OA\Schema(type="integer")),
      *   @OA\Parameter(name="type", in="query", required=false, @OA\Schema(type="string", enum={"cheque","epargne"})),
-     *   @OA\Parameter(name="statut", in="query", required=false, @OA\Schema(type="string", enum={"actif","bloque","ferme"})),
      *   @OA\Parameter(name="search", in="query", required=false, @OA\Schema(type="string")),
      *   @OA\Parameter(name="sort", in="query", required=false, @OA\Schema(type="string", enum={"dateCreation","titulaire"})),
      *   @OA\Parameter(name="order", in="query", required=false, @OA\Schema(type="string", enum={"asc","desc"})),
@@ -77,6 +76,53 @@ class CompteController extends Controller
 
     /**
      * @OA\Get(
+     *   path="/monteiro.daisa/v1/comptes/numero/{numeroCompte}",
+     *   summary="Récupérer un compte par son numéro",
+     *   tags={"Comptes"},
+     *   @OA\Parameter(
+     *     name="numeroCompte",
+     *     in="path",
+     *     required=true,
+     *     description="Numéro de compte à rechercher",
+     *     @OA\Schema(type="string")
+     *   ),
+     *   @OA\Response(
+     *     response=200,
+     *     description="Détails du compte",
+     *     @OA\JsonContent(ref="#/components/schemas/Compte")
+     *   ),
+     *   @OA\Response(
+     *     response=404,
+     *     description="Compte non trouvé"
+     *   )
+     * )
+     */
+    public function showByNumero(string $numeroCompte)
+    {
+        try {
+            $compte = Compte::where('numeroCompte', $numeroCompte)->firstOrFail();
+            
+            return response()->json([
+                'success' => true,
+                'data' => $this->formatCompteData($compte)
+            ]);
+            
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Aucun compte trouvé avec ce numéro.'
+            ], 404);
+        } catch (\Exception $e) {
+            Log::error('Erreur lors de la récupération du compte: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Une erreur est survenue lors de la récupération du compte.'
+            ], 500);
+        }
+    }
+
+    /**
+     * @OA\Get(
      *   path="/monteiro.daisa/v1/clients/{clientId}/comptes",
      *   summary="Lister les comptes d'un client",
      *   tags={"Comptes"},
@@ -95,6 +141,19 @@ class CompteController extends Controller
         try {
             $client = Client::findOrFail($clientId);
             $comptes = $client->comptes()->get();
+
+            // Si aucun compte, en créer un par défaut
+            if ($comptes->isEmpty()) {
+                $compte = Compte::create([
+                    'client_id' => $client->id,
+                    'titulaire' => $client->prenom . ' ' . $client->nom,
+                    'type' => 'epargne',
+                    'devise' => 'FCFA',
+                    'statut' => 'actif',
+                    'metadata' => ['version' => 1],
+                ]);
+                $comptes = collect([$compte]);
+            }
             
             return response()->json([
                 'success' => true,
@@ -253,12 +312,31 @@ class CompteController extends Controller
     public function destroy(string $compteId)
     {
         try {
-            $compte = Compte::findOrFail($compteId);
+            $compte = Compte::find($compteId);
+            
+            if (!$compte) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Compte non trouvé',
+                    'errors' => [
+                        'message' => 'Aucun compte trouvé avec cet ID',
+                        'details' => [
+                            'compteId' => $compteId,
+                        ],
+                    ],
+                ], 404);
+            }
+
+            // Mise à jour du statut et de la date de fermeture avant la suppression
+            $compte->update([
+                'statut' => 'ferme',
+                'dateFermeture' => now()
+            ]);
+
+            // Suppression logique
             $compte->delete();
             
             return response()->noContent();
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            return $this->errorResponse('Compte non trouvé', 404);
         } catch (\Exception $e) {
             Log::error('Erreur lors de la suppression du compte: ' . $e->getMessage());
             return $this->errorResponse('Erreur lors de la suppression du compte', 500);

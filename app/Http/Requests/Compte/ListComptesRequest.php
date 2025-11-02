@@ -14,26 +14,29 @@ class ListComptesRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'page' => ['sometimes','integer','min:1'],
-            'limit' => ['sometimes','integer','min:1','max:100'],
-            'type' => ['sometimes','in:cheque,epargne'],
-            'statut' => ['sometimes','in:actif,bloque,ferme'],
-            'search' => ['sometimes','string','nullable'],
-            'sort' => ['sometimes','in:dateCreation,titulaire'],
-            'order' => ['sometimes','in:asc,desc'],
+            'page' => ['sometimes', 'integer', 'min:1'],
+            'limit' => ['sometimes', 'integer', 'min:1', 'max:100'],
+            'type' => ['sometimes', 'string', 'in:cheque,epargne'],
+            'search' => ['sometimes', 'string', 'max:100'],
+            'sort' => ['sometimes', 'in:dateCreation,titulaire'],
+            'order' => ['sometimes', 'in:asc,desc'],
         ];
     }
 
     public function filters(): array
     {
         $validated = $this->validated();
+        
+        $type = isset($validated['type']) ? strtolower($validated['type']) : null;
+
         return [
             'page' => max(1, (int)($validated['page'] ?? 1)),
-            'limit' => min(100, max(1, (int)($validated['limit'] ?? 10))),
-            'type' => $validated['type'] ?? null,
-            'statut' => $validated['statut'] ?? 'actif',
+            'limit' => min(100, max(1, (int)($validated['limit'] ?? 5))),
+            'type' => in_array($type, ['cheque', 'epargne']) ? $type : null,
             'search' => $validated['search'] ?? null,
-            'sort' => in_array(($validated['sort'] ?? ''), ['dateCreation','titulaire']) ? $validated['sort'] : 'dateCreation',
+            'sort' => in_array(($validated['sort'] ?? ''), ['dateCreation', 'titulaire']) 
+                ? $validated['sort'] 
+                : 'dateCreation',
             'order' => (($validated['order'] ?? '') === 'asc') ? 'asc' : 'desc',
         ];
     }

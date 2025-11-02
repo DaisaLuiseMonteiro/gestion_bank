@@ -118,53 +118,6 @@
                 ]
             }
         },
-        "/monteiro.daisa/v1/comptes/{compteId}/debloquer": {
-            "post": {
-                "tags": [
-                    "Comptes"
-                ],
-                "summary": "Débloquer un compte épargne",
-                "operationId": "93ec595b40eee1ee334c987ba121311b",
-                "parameters": [
-                    {
-                        "name": "compteId",
-                        "in": "path",
-                        "description": "ID du compte à débloquer",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Compte débloqué avec succès",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/CompteDebloque"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Requête invalide"
-                    },
-                    "401": {
-                        "description": "Non autorisé"
-                    },
-                    "404": {
-                        "description": "Compte non trouvé"
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            }
-        },
         "/monteiro.daisa/v1/comptes": {
             "get": {
                 "tags": [
@@ -198,19 +151,6 @@
                             "enum": [
                                 "cheque",
                                 "epargne"
-                            ]
-                        }
-                    },
-                    {
-                        "name": "statut",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "actif",
-                                "bloque",
-                                "ferme"
                             ]
                         }
                     },
@@ -250,6 +190,41 @@
                 "responses": {
                     "200": {
                         "description": "Liste paginée des comptes"
+                    }
+                }
+            }
+        },
+        "/monteiro.daisa/v1/comptes/numero/{numeroCompte}": {
+            "get": {
+                "tags": [
+                    "Comptes"
+                ],
+                "summary": "Récupérer un compte par son numéro",
+                "operationId": "54701d71d8ede3642b8ffb4726570e79",
+                "parameters": [
+                    {
+                        "name": "numeroCompte",
+                        "in": "path",
+                        "description": "Numéro de compte à rechercher",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Détails du compte",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Compte"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Compte non trouvé"
                     }
                 }
             }
