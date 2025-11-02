@@ -364,8 +364,8 @@
                 "tags": [
                     "Comptes"
                 ],
-                "summary": "Mettre à jour un compte (y compris le blocage/déblocage)",
-                "description": "Permet de mettre à jour le statut d'un compte, y compris le blocage et le déblocage.\\n\\n## Blocage d'un compte\\nPour bloquer un compte, définissez `statut` à 'bloque' et fournissez un `motifBlocage`.\\n\\n## Déblocage d'un compte\\nPour débloquer un compte, définissez `statut` à 'actif'. Le `motifBlocage` sera automatiquement supprimé.",
+                "summary": "Mettre à jour les informations d'un compte",
+                "description": "Permet de mettre à jour le titulaire, le type de compte et l'email du client associé.",
                 "operationId": "b180c22eb5f24c31922a05142e348793",
                 "parameters": [
                     {
@@ -380,33 +380,37 @@
                     }
                 ],
                 "requestBody": {
-                    "description": "Données de mise à jour du compte",
+                    "description": "Informations à mettre à jour",
                     "required": true,
                     "content": {
                         "application/json": {
                             "schema": {
                                 "required": [
-                                    "statut"
+                                    "nom",
+                                    "prenom"
                                 ],
                                 "properties": {
-                                    "statut": {
-                                        "description": "Nouveau statut du compte. 'bloque' pour bloquer, 'actif' pour débloquer",
+                                    "nom": {
+                                        "type": "string",
+                                        "example": "Dupont"
+                                    },
+                                    "prenom": {
+                                        "type": "string",
+                                        "example": "Jean"
+                                    },
+                                    "type": {
                                         "type": "string",
                                         "enum": [
-                                            "actif",
-                                            "bloque",
-                                            "ferme"
-                                        ]
+                                            "courant",
+                                            "epargne",
+                                            "cheque"
+                                        ],
+                                        "example": "epargne"
                                     },
-                                    "motifBlocage": {
-                                        "description": "Obligatoire si statut='bloque'. Raison du blocage du compte",
+                                    "email": {
                                         "type": "string",
-                                        "nullable": true
-                                    },
-                                    "metadata": {
-                                        "description": "Métadonnées supplémentaires du compte",
-                                        "type": "object",
-                                        "nullable": true
+                                        "format": "email",
+                                        "example": "jean.dupont@example.com"
                                     }
                                 },
                                 "type": "object"
@@ -438,28 +442,8 @@
                             }
                         }
                     },
-                    "400": {
-                        "description": "Requête invalide",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean",
-                                            "example": false
-                                        },
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Le motif de blocage est requis"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
                     "404": {
-                        "description": "Compte non trouvé",
+                        "description": "Compte ou client non trouvé",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -470,46 +454,7 @@
                                         },
                                         "message": {
                                             "type": "string",
-                                            "example": "Compte non trouvé"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Données invalides",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "message": {
-                                            "type": "string",
-                                            "example": "The given data was invalid."
-                                        },
-                                        "errors": {
-                                            "type": "object"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Erreur interne du serveur",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean",
-                                            "example": false
-                                        },
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Erreur lors de la mise à jour du compte"
+                                            "example": "Ressource non trouvée"
                                         }
                                     },
                                     "type": "object"

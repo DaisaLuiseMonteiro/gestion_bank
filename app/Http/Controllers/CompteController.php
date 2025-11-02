@@ -315,53 +315,86 @@ class CompteController extends Controller
      *   )
      * )
      */
+    /**
+     * @OA\Patch(
+     *   path="/monteiro.daisa/v1/comptes/{compteId}",
+     *   summary="Mettre à jour les informations d'un compte",
+     *   description="Permet de mettre à jour le titulaire, le type de compte et l'email du client associé.",
+     *   tags={"Comptes"},
+     *   security={{"bearerAuth": {}}},
+     *   @OA\Parameter(
+     *     name="compteId",
+     *     in="path",
+     *     required=true,
+     *     description="ID du compte à mettre à jour",
+     *     @OA\Schema(type="string", format="uuid")
+     *   ),
+     *   @OA\RequestBody(
+     *     required=true,
+     *     description="Informations à mettre à jour",
+     *     @OA\JsonContent(
+     *       required={"nom", "prenom"},
+     *       @OA\Property(property="nom", type="string", example="Dupont"),
+     *       @OA\Property(property="prenom", type="string", example="Jean"),
+     *       @OA\Property(property="type", type="string", enum={"courant","epargne","cheque"}, example="epargne"),
+     *       @OA\Property(property="email", type="string", format="email", example="jean.dupont@example.com")
+     *     )
+     *   ),
+     *   @OA\Response(
+     *     response=200,
+     *     description="Compte mis à jour avec succès",
+     *     @OA\JsonContent(
+     *       @OA\Property(property="success", type="boolean", example=true),
+     *       @OA\Property(property="message", type="string", example="Compte mis à jour avec succès"),
+     *       @OA\Property(property="data", type="object", ref="#/components/schemas/Compte")
+     *     )
+     *   ),
+     *   @OA\Response(
+     *     response=404,
+     *     description="Compte ou client non trouvé",
+     *     @OA\JsonContent(
+     *       @OA\Property(property="success", type="boolean", example=false),
+     *       @OA\Property(property="message", type="string", example="Ressource non trouvée")
+     *     )
+     *   )
+     * )
+     */
     // PATCH monteiro.daisa/v1/comptes/{compteId}
     public function update(Request $request, string $compteId)
     {
         try {
-            $compte = Compte::find($compteId);
+            $compte = Compte::with('client.user')->find($compteId);
             if (!$compte) {
                 return $this->errorResponse('Compte non trouvé', 404);
             }
 
             $validated = $request->validate([
-                'statut' => 'sometimes|in:actif,bloque,ferme',
-                'motifBlocage' => 'required_if:statut,bloque|string|nullable',
-                'metadata' => 'sometimes|array',
+                'nom' => 'required|string|max:255',
+                'prenom' => 'required|string|max:255',
+                'type' => 'sometimes|in:courant,epargne,cheque',
+                'email' => 'sometimes|email|unique:users,email,' . ($compte->client->user_id ?? '')
             ]);
 
-            if (isset($validated['statut'])) {
-                $compte->statut = $validated['statut'];
-                
-                if ($validated['statut'] === 'bloque' && isset($validated['motifBlocage'])) {
-                    $metadata = $compte->metadata ?? [];
-                    $metadata['motifBlocage'] = $validated['motifBlocage'];
-                    $compte->metadata = $metadata;
-                } 
-                elseif ($validated['statut'] === 'actif') {
-                    $metadata = $compte->metadata ?? [];
-                    unset($metadata['motifBlocage']);
-                    $compte->metadata = $metadata;
-                }
-                elseif ($validated['statut'] === 'ferme') {
-                    $metadata = $compte->metadata ?? [];
-                    $metadata['dateFermeture'] = now()->toDateTimeString();
-                    $compte->metadata = $metadata;
-                }
+            // Mise à jour du titulaire du compte
+            $compte->titulaire = $validated['prenom'] . ' ' . $validated['nom'];
+            
+            // Mise à jour du type de compte si fourni
+            if (isset($validated['type'])) {
+                $compte->type = $validated['type'];
             }
 
-            if (isset($validated['metadata'])) {
-                $currentMetadata = $compte->metadata ?? [];
-                $compte->metadata = array_merge($currentMetadata, $validated['metadata']);
+            // Mise à jour de l'email du client si fourni
+            if (isset($validated['email']) && $compte->client && $compte->client->user) {
+                $compte->client->user->email = $validated['email'];
+                $compte->client->user->save();
             }
-
+            
             $compte->save();
 
             return $this->successResponse(
                 $this->formatCompteData($compte),
                 'Compte mis à jour avec succès'
             );
-
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
                 'success' => false,
