@@ -97,7 +97,6 @@ class CompteController extends Controller
      *   )
      * )
      */
-    // GET monteiro.daisa/v1/comptes/numero/{numeroCompte}
     public function showByNumero(string $numeroCompte)
     {
         try {
@@ -143,7 +142,7 @@ class CompteController extends Controller
             $client = Client::findOrFail($clientId);
             $comptes = $client->comptes()->get();
 
-            // Si aucun compte, en créer un par défaut selon la règle exprimée
+            // Si aucun compte, en créer un par défaut
             if ($comptes->isEmpty()) {
                 $compte = Compte::create([
                     'client_id' => $client->id,
@@ -155,12 +154,16 @@ class CompteController extends Controller
                 ]);
                 $comptes = collect([$compte]);
             }
-
-            $data = $comptes->map(fn($c) => $this->formatCompteData($c));
-            return $this->successResponse($data);
-        } catch (\Throwable $e) {
-            Log::error('Comptes.byClient error: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
-            return response()->json(['success' => false, 'message' => 'Erreur interne'], 500);
+            
+            return response()->json([
+                'success' => true,
+                'data' => $comptes->map(fn($c) => $this->formatCompteData($c))
+            ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return $this->errorResponse('Client non trouvé', 404);
+        } catch (\Exception $e) {
+            Log::error('Erreur lors de la récupération des comptes du client: ' . $e->getMessage());
+            return $this->errorResponse('Erreur lors de la récupération des comptes', 500);
         }
     }
 
@@ -250,29 +253,18 @@ class CompteController extends Controller
                 'metadata' => 'sometimes|array'
             ]);
 
-            // Mise à jour du statut si fourni
-            if (isset($validated['statut'])) {
-                $compte->statut = $validated['statut'];
-                
-                // Si le compte est bloqué, on enregistre le motif
-                if ($validated['statut'] === 'bloque' && isset($validated['motifBlocage'])) {
-                    $metadata = $compte->metadata ?? [];
+            // Gestion du motif de blocage
+            if (array_key_exists('motifBlocage', $validated)) {
+                $metadata = $compte->metadata ?? [];
+                if (!empty($validated['motifBlocage'])) {
                     $metadata['motifBlocage'] = $validated['motifBlocage'];
-                    $compte->metadata = $metadata;
-                } 
-                // Si le compte est réactivé, on supprime le motif de blocage
-                elseif ($validated['statut'] === 'actif') {
-                    $metadata = $compte->metadata ?? [];
+                } else {
                     unset($metadata['motifBlocage']);
                 }
-                // Si le compte est fermé, on enregistre la date de fermeture
-                elseif ($validated['statut'] === 'ferme') {
-                    $metadata = $compte->metadata ?? [];
-                    $metadata['dateFermeture'] = now()->toDateTimeString();
-                    $compte->metadata = $metadata;
-                }
+                $compte->metadata = $metadata;
             }
 
+            // Mise à jour des métadonnées si fournies
             if (isset($validated['metadata'])) {
                 $compte->metadata = array_merge(
                     $compte->metadata ?? [],
@@ -299,51 +291,6 @@ class CompteController extends Controller
         } catch (\Exception $e) {
             Log::error('Erreur lors de la mise à jour du compte: ' . $e->getMessage());
             return $this->errorResponse('Erreur lors de la mise à jour du compte', 500);
-        }
-    }
-
-    // GET monteiro.daisa/v1/comptes/{clientId}
-    public function showByClient(string $clientId)
-    {
-        try {
-            $compte = Compte::where('client_id', $clientId)->first();
-            if (!$compte) {
-                return response()->json([
-                    'success' => false,
-                    'error' => [
-                        'code' => 'COMPTE_NOT_FOUND',
-                        'message' => "Le compte avec l'ID spécifié n'existe pas",
-                        'details' => [
-                            'compteId' => $clientId,
-                        ],
-                    ],
-                ], 404);
-            }
-
-            $dateCreation = $compte->dateCreation instanceof \Illuminate\Support\Carbon
-                ? $compte->dateCreation->toISOString()
-                : (string) $compte->dateCreation;
-
-            $data = [
-                'id' => $compte->id,
-                'numeroCompte' => $compte->numeroCompte,
-                'titulaire' => $compte->titulaire,
-                'type' => $compte->type,
-                'solde' => $compte->getSolde(),
-                'devise' => $compte->devise,
-                'dateCreation' => $dateCreation,
-                'statut' => $compte->statut,
-                'motifBlocage' => data_get($compte->metadata, 'motifBlocage'),
-                'metadata' => $compte->metadata,
-            ];
-
-            return response()->json([
-                'success' => true,
-                'data' => $data,
-            ]);
-        } catch (\Throwable $e) {
-            Log::error('Comptes.showByClient error: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
-            return response()->json(['success' => false, 'message' => 'Erreur interne'], 500);
         }
     }
 
@@ -390,8 +337,6 @@ class CompteController extends Controller
             $compte->delete();
             
             return response()->noContent();
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            return $this->errorResponse('Compte non trouvé', 404);
         } catch (\Exception $e) {
             Log::error('Erreur lors de la suppression du compte: ' . $e->getMessage());
             return $this->errorResponse('Erreur lors de la suppression du compte', 500);
