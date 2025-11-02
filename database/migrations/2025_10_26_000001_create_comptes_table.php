@@ -10,7 +10,7 @@ return new class extends Migration {
         Schema::create('comptes', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->uuid('client_id');
-            $table->string('numeroCompte')->unique();
+            $table->string('numeroCompte')->unique()->nullable();
             $table->string('titulaire');
             $table->enum('type', ['courant','epargne','cheque']);
             $table->string('devise')->default('FCFA');
