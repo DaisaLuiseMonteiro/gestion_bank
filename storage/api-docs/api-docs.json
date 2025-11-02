@@ -234,7 +234,7 @@
                 "tags": [
                     "Comptes"
                 ],
-                "summary": "Lister les comptes d'un client (création si aucun)",
+                "summary": "Lister les comptes d'un client",
                 "operationId": "d3f5e88514ad35d9f0402d85675a7bab",
                 "parameters": [
                     {
@@ -250,6 +250,9 @@
                 "responses": {
                     "200": {
                         "description": "Liste des comptes du client"
+                    },
+                    "404": {
+                        "description": "Client non trouvé"
                     }
                 }
             }
@@ -274,10 +277,10 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Compte trouvé"
+                        "description": "Détails du compte"
                     },
                     "404": {
-                        "description": "Compte introuvable"
+                        "description": "Compte non trouvé"
                     }
                 }
             },
@@ -299,73 +302,19 @@
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "Compte marqué comme supprimé avec succès",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean",
-                                            "example": true
-                                        },
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Compte supprimé avec succès"
-                                        },
-                                        "data": {
-                                            "properties": {
-                                                "id": {
-                                                    "type": "string",
-                                                    "format": "uuid",
-                                                    "example": "550e8400-e29b-41d4-a716-446655440000"
-                                                },
-                                                "numeroCompte": {
-                                                    "type": "string",
-                                                    "example": "C00123456"
-                                                },
-                                                "statut": {
-                                                    "type": "string",
-                                                    "enum": [
-                                                        "actif",
-                                                        "bloque",
-                                                        "ferme"
-                                                    ],
-                                                    "example": "ferme"
-                                                },
-                                                "dateFermeture": {
-                                                    "type": "string",
-                                                    "format": "date-time",
-                                                    "example": "2025-10-19T11:15:00Z"
-                                                }
-                                            },
-                                            "type": "object"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
+                    "204": {
+                        "description": "Compte supprimé avec succès"
                     },
                     "404": {
                         "description": "Compte non trouvé"
-                    },
-                    "500": {
-                        "description": "Erreur interne du serveur"
                     }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
+                }
             },
             "patch": {
                 "tags": [
                     "Comptes"
                 ],
-                "summary": "Mettre à jour un compte (y compris le blocage/déblocage)",
-                "description": "Permet de mettre à jour le statut d'un compte, y compris le blocage et le déblocage.\\n\\n## Blocage d'un compte\\nPour bloquer un compte, définissez `statut` à 'bloque' et fournissez un `motifBlocage`.\\n\\n## Déblocage d'un compte\\nPour débloquer un compte, définissez `statut` à 'actif'. Le `motifBlocage` sera automatiquement supprimé.",
+                "summary": "Mettre à jour les métadonnées d'un compte",
                 "operationId": "b180c22eb5f24c31922a05142e348793",
                 "parameters": [
                     {
@@ -380,33 +329,19 @@
                     }
                 ],
                 "requestBody": {
-                    "description": "Données de mise à jour du compte",
                     "required": true,
                     "content": {
                         "application/json": {
                             "schema": {
-                                "required": [
-                                    "statut"
-                                ],
                                 "properties": {
-                                    "statut": {
-                                        "description": "Nouveau statut du compte. 'bloque' pour bloquer, 'actif' pour débloquer",
-                                        "type": "string",
-                                        "enum": [
-                                            "actif",
-                                            "bloque",
-                                            "ferme"
-                                        ]
-                                    },
                                     "motifBlocage": {
-                                        "description": "Obligatoire si statut='bloque'. Raison du blocage du compte",
                                         "type": "string",
+                                        "example": "Suspicion de fraude",
                                         "nullable": true
                                     },
                                     "metadata": {
-                                        "description": "Métadonnées supplémentaires du compte",
                                         "type": "object",
-                                        "nullable": true
+                                        "example": []
                                     }
                                 },
                                 "type": "object"
@@ -438,36 +373,12 @@
                             }
                         }
                     },
-                    "400": {
-                        "description": "Requête invalide",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean",
-                                            "example": false
-                                        },
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Le motif de blocage est requis"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
                     "404": {
                         "description": "Compte non trouvé",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "properties": {
-                                        "success": {
-                                            "type": "boolean",
-                                            "example": false
-                                        },
                                         "message": {
                                             "type": "string",
                                             "example": "Compte non trouvé"
@@ -496,33 +407,8 @@
                                 }
                             }
                         }
-                    },
-                    "500": {
-                        "description": "Erreur interne du serveur",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean",
-                                            "example": false
-                                        },
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Erreur lors de la mise à jour du compte"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
                     }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
+                }
             }
         }
     },
