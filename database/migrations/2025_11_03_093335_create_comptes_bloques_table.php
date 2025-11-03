@@ -11,8 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Création de la table dans la base de données Neon
-        Schema::connection('neon')->create('comptes_bloques', function (Blueprint $table) {
+        // Création de la table dans la base de données principale
+        Schema::create('comptes_bloques', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->string('numero_compte', 20)->unique();
             $table->string('titulaire');
@@ -36,6 +36,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::connection('neon')->dropIfExists('comptes_bloques');
+        Schema::dropIfExists('comptes_bloques');
     }
 };

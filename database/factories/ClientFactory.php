@@ -38,12 +38,12 @@ class ClientFactory extends Factory
        'user_id' => \App\Models\User::factory(),
        'nom' => $nom,
        'prenom' => $prenom,
-       'email' => $this->faker->unique()->safeEmail(),
+       'email' => strtolower($prenom . '.' . $nom . $this->faker->unique()->numberBetween(1, 100) . '@gmail.com'),
        'sexe' => $sexe,
        'telephone' => $telephone,
        'cni' => $cni,
        'adresse' => $this->faker->address(),
-       'statut' => $this->faker->randomElement(['actif', 'inactif']),
+       'statut' => 'actif',
        'metadata' => [
            'derniereModification' => $this->faker->dateTime(),
            'version' => 1

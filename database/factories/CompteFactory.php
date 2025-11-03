@@ -14,7 +14,7 @@ class CompteFactory extends Factory
     public function definition(): array
     {
         $types = ['epargne', 'cheque'];
-        $statuts = ['actif', 'bloque', 'ferme'];
+        $statuts = ['actif']; // Seulement des comptes actifs
         $devises = ['FCFA'];
 
         // Noms sénégalais courants pour les titulaires
