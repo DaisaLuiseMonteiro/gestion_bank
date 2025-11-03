@@ -36,6 +36,92 @@
                 }
             }
         },
+        "/monteiro.daisa/v1/clients/telephone/{telephone}": {
+            "get": {
+                "tags": [
+                    "Clients"
+                ],
+                "summary": "Récupérer un client par son numéro de téléphone",
+                "operationId": "cb6b5e6c03cf6abc2e362f5499005f44",
+                "parameters": [
+                    {
+                        "name": "telephone",
+                        "in": "path",
+                        "description": "Numéro de téléphone du client",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Client trouvé",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "id": {
+                                                    "type": "string",
+                                                    "format": "uuid"
+                                                },
+                                                "nom": {
+                                                    "type": "string"
+                                                },
+                                                "prenom": {
+                                                    "type": "string"
+                                                },
+                                                "telephone": {
+                                                    "type": "string"
+                                                },
+                                                "cni": {
+                                                    "type": "string"
+                                                },
+                                                "statut": {
+                                                    "type": "string"
+                                                },
+                                                "nombre_comptes": {
+                                                    "description": "Nombre de comptes liés au client",
+                                                    "type": "integer"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Client non trouvé",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Client non trouvé"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/monteiro.daisa/v1/comptes/{compteId}/bloquer": {
             "post": {
                 "tags": [
