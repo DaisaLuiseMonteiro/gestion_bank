@@ -22,9 +22,10 @@ Route::prefix('monteiro.daisa/v1')->middleware('logging')->group(function () {
     Route::get('comptes/numero/{numeroCompte}', [CompteController::class, 'showByNumero']);
     Route::get('clients/{clientId}/comptes', [CompteController::class, 'byClient']);
     Route::get('comptes/{compteId}', [CompteController::class, 'show']);
+    Route::get('clients', [ClientController::class, 'index']);
+    
+    // Routes de modification
     Route::patch('comptes/{compteId}', [CompteController::class, 'update']);
     Route::delete('comptes/{compteId}', [CompteController::class, 'destroy']);
     Route::post('comptes/{compteId}/bloquer', [CompteBloqueController::class, 'bloquer']);
-    Route::get('clients/telephone/{telephone}', [ClientController::class, 'showByPhone']);
-    Route::get('clients', [ClientController::class, 'index']);
 });
